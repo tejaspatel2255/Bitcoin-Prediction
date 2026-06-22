@@ -46,7 +46,10 @@ bitcoin-prediction/
 │       ├── gemini_service.py # OpenRouter AI market insight generator
 │       └── prediction_service.py # Ensemble inference + Supabase persistence
 ├── streamlit_app/
-│   └── app.py                # Premium Streamlit frontend dashboard
+│   ├── Home.py               # Streamlit entry point landing page
+│   ├── utils.py              # API utilities & custom CSS styles
+│   └── pages/                # Multi-page dashboard pages
+
 ├── scripts/
 │   ├── seed_data.py          # Seeding 3 years of data + indicators into Supabase
 │   ├── setup_db.py           # Database connection & health checks
@@ -136,9 +139,10 @@ venv\Scripts\python.exe main.py
 
 ### Step 4 — Start the Streamlit Dashboard
 ```bash
-venv\Scripts\streamlit.exe run streamlit_app/app.py
+venv\Scripts\streamlit.exe run streamlit_app/Home.py
 ```
 - Dashboard is live at: **http://localhost:8501**
+
 
 ---
 
