@@ -1,0 +1,76 @@
+# ────────────────────────────────────────────────────────────────────────────
+#  Bitcoin Prediction App — .gitignore
+# ────────────────────────────────────────────────────────────────────────────
+
+# ── Python ──────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+var/
+sdist/
+wheels/
+.installed.cfg
+MANIFEST
+
+# ── Virtual Environments ─────────────────────────────────────────────────────
+venv/
+env/
+.venv/
+ENV/
+.env.local
+.env.production
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+# NEVER commit real credentials — use .env.example as a template
+.env
+
+# ── ML Model Files (large binary artifacts — do not commit to git) ───────────
+data/saved_models/
+*.pkl
+*.keras
+*.h5
+*.joblib
+
+# ── Local Data Cache ─────────────────────────────────────────────────────────
+data/*.csv
+data/*.parquet
+data/*.json
+
+# ── Jupyter Notebooks Checkpoints ────────────────────────────────────────────
+.ipynb_checkpoints/
+*.ipynb
+
+# ── OS Artifacts ─────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / Editor ─────────────────────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Testing & Coverage ────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/
+
+# ── Streamlit ─────────────────────────────────────────────────────────────────
+.streamlit/secrets.toml
+
+# ── Mypy ──────────────────────────────────────────────────────────────────────
+.mypy_cache/
