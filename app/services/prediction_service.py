@@ -4,134 +4,114 @@ import numpy as np
 import pandas as pd
 from datetime import datetime, timedelta
 
-from app.services.supabase_service import insert_prediction
+from app.services.supabase_service import insert_prediction, get_predictions
 from app.services.data_service import fetch_from_yfinance, fetch_from_coingecko, merge_and_clean, add_technical_indicators
-from app.models.prophet_model import ProphetModelWrapper
-from app.models.lstm_model import LSTMModelWrapper
-from app.models.regressor_model import RegressorModelWrapper
+from app.models import model_manager
 from app.core.logger import get_logger
 
 logger = get_logger("prediction_service")
 
+
 def generate_predictions() -> dict:
     """
-    Generate predictions for the next trading day and 7-day trend using Prophet, LSTM, and Random Forest.
-    Saves predictions into Supabase predictions table under the new schema structure.
+    Run the full prediction pipeline:
+      1. Fetch the last 90 days of BTC data (enough for 60-day LSTM + indicator warmup).
+      2. Compute all technical indicators.
+      3. Run Prophet, LSTM, and RF via model_manager.
+      4. Persist each model's prediction to the Supabase predictions table.
+      5. Return a consolidated dict of all predictions.
     """
-    # 1. Fetch latest data for inference (retrieve last 60 days to have enough window for indicators + lookback)
-    logger.info("Fetching latest data for inference...")
-    end_date = datetime.now()
-    start_date = end_date - timedelta(days=60)
-    
+    # 1. Fetch recent data for inference
+    logger.info("Fetching latest market data for prediction inference...")
+    end_date   = datetime.now()
+    start_date = end_date - timedelta(days=90)
+
     try:
         raw_df = fetch_from_yfinance(start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
     except Exception as yf_err:
-        logger.warning(f"yfinance failed for inference fetch: {yf_err}. Using CoinGecko fallback...")
-        raw_df = fetch_from_coingecko(days=60)
-        
+        logger.warning(f"yfinance failed: {yf_err}. Using CoinGecko fallback...")
+        raw_df = fetch_from_coingecko(days=90)
+
     df_cleaned = merge_and_clean(raw_df)
-    df = add_technical_indicators(df_cleaned)
-    
-    # Get latest date in our df
-    latest_row = df.sort_values('date').iloc[-1]
-    latest_date = latest_row['date']
-    latest_close = float(latest_row['close'])
-    
-    prediction_target_date = latest_date + timedelta(days=1)
-    logger.info(f"Latest data point: {latest_date} (Close: ${latest_close:,.2f})")
-    logger.info(f"Generating prediction for date: {prediction_target_date}")
-    
-    # 2. Load models and predict
-    # Prophet Prediction
-    prophet_wrapper = ProphetModelWrapper()
-    prophet_forecast = prophet_wrapper.predict_next_days(days=7)
-    prophet_next_day = float(prophet_forecast[0]) # Next day
-    prophet_7th_day = float(prophet_forecast[6]) # 7th day
-    
-    # LSTM Prediction
-    lstm_wrapper = LSTMModelWrapper(lookback=30)
-    # Get recent prices for LSTM input (at least 30 values)
-    recent_prices = df.sort_values('date')['close'].values
-    lstm_next_day = float(lstm_wrapper.predict_next_day(recent_prices))
-    
-    # Scikit-learn Regressor Prediction
-    sklearn_wrapper = RegressorModelWrapper()
-    sklearn_next_day = float(sklearn_wrapper.predict_next_day(df))
-    
-    # 3. Ensemble calculation
-    # Weights: 40% LSTM, 30% Prophet, 30% Scikit-learn
-    w_lstm, w_prophet, w_sklearn = 0.40, 0.30, 0.30
-    ensemble_next_day = (w_lstm * lstm_next_day) + (w_prophet * prophet_next_day) + (w_sklearn * sklearn_next_day)
-    
-    # Determine 7-day trend (using Prophet's long-term projection)
-    percent_change_7d = ((prophet_7th_day - latest_close) / latest_close) * 100
-    if percent_change_7d > 1.5:
-        trend_7day = "BULLISH"
-    elif percent_change_7d < -1.5:
-        trend_7day = "BEARISH"
-    else:
-        trend_7day = "NEUTRAL"
-        
-    logger.info("--- Inference Results ---")
-    logger.info(f"Prophet prediction:  ${prophet_next_day:,.2f}")
-    logger.info(f"LSTM prediction:     ${lstm_next_day:,.2f}")
-    logger.info(f"Sklearn prediction:  ${sklearn_next_day:,.2f}")
-    logger.info(f"Ensemble prediction: ${ensemble_next_day:,.2f}")
-    logger.info(f"7-Day Trend:         {trend_7day} ({percent_change_7d:+.2f}%)")
-    logger.info("-------------------------")
-    
-    # 4. Construct prediction payloads for each model and insert into Supabase
-    predictions_to_save = [
-        {
+    df         = add_technical_indicators(df_cleaned)
+
+    # 2. Ensure models are loaded (no-op if already in memory from startup)
+    model_manager.load_all_models()
+
+    # 3. Run all models via model_manager
+    pred = model_manager.run_all_predictions(df)
+
+    prediction_date = pred.get("prediction_date")
+    prophet_price   = pred.get("prophet_next")
+    lstm_price      = pred.get("lstm_next")
+    rf_price        = pred.get("rf_next")
+    rf_direction    = pred.get("rf_direction")
+    ensemble_price  = pred.get("ensemble_next")
+
+    logger.info(f"Prediction Date: {prediction_date}")
+    logger.info(f"  Prophet:  {f'${prophet_price:,.2f}' if prophet_price else 'N/A'}")
+    logger.info(f"  LSTM:     {f'${lstm_price:,.2f}' if lstm_price else 'N/A'}")
+    logger.info(f"  RF:       {f'${rf_price:,.2f}' if rf_price else 'N/A'} ({rf_direction})")
+    logger.info(f"  Ensemble: {f'${ensemble_price:,.2f}' if ensemble_price else 'N/A'}")
+
+    # 4. Save each model's prediction to Supabase
+    saved = 0
+    predictions_to_save = []
+
+    if prophet_price is not None:
+        predictions_to_save.append({
             "model_used": "prophet",
-            "prediction_type": "price_forecast",
-            "predicted_value": prophet_next_day,
-            "prediction_date": prediction_target_date,
-            "confidence_score": 0.80
-        },
-        {
-            "model_used": "lstm",
-            "prediction_type": "price_forecast",
-            "predicted_value": lstm_next_day,
-            "prediction_date": prediction_target_date,
-            "confidence_score": 0.85
-        },
-        {
-            "model_used": "random_forest",
-            "prediction_type": "price_forecast",
-            "predicted_value": sklearn_next_day,
-            "prediction_date": prediction_target_date,
+            "prediction_type": "price_forecast_7d",
+            "predicted_value": round(prophet_price, 2),
+            "prediction_date": str(prediction_date),
             "confidence_score": 0.75
-        },
-        {
+        })
+
+    if lstm_price is not None:
+        predictions_to_save.append({
+            "model_used": "lstm",
+            "prediction_type": "price_forecast_1d",
+            "predicted_value": round(lstm_price, 2),
+            "prediction_date": str(prediction_date),
+            "confidence_score": 0.82
+        })
+
+    if rf_price is not None:
+        predictions_to_save.append({
+            "model_used": "random_forest",
+            "prediction_type": "price_forecast_1d",
+            "predicted_value": round(rf_price, 2),
+            "prediction_date": str(prediction_date),
+            "confidence_score": 0.78
+        })
+
+    if ensemble_price is not None:
+        predictions_to_save.append({
             "model_used": "ensemble",
-            "prediction_type": "price_forecast",
-            "predicted_value": ensemble_next_day,
-            "prediction_date": prediction_target_date,
+            "prediction_type": "price_forecast_1d",
+            "predicted_value": round(ensemble_price, 2),
+            "prediction_date": str(prediction_date),
             "confidence_score": 0.90
-        }
-    ]
-    
-    saved_records = []
-    for pred in predictions_to_save:
-        res = insert_prediction(pred)
+        })
+
+    for record in predictions_to_save:
+        res = insert_prediction(record)
         if res.get("status") == "success":
-            saved_records.append(res.get("data"))
-            
-    logger.info(f"Saved {len(saved_records)} prediction records to Supabase.")
-    
-    # Return composite representation of prediction results
+            saved += 1
+
+    logger.info(f"Saved {saved}/{len(predictions_to_save)} prediction records to Supabase.")
+
     return {
-        "prediction_date": prediction_target_date,
-        "latest_close": latest_close,
-        "prophet_price": prophet_next_day,
-        "lstm_price": lstm_next_day,
-        "sklearn_price": sklearn_next_day,
-        "ensemble_price": ensemble_next_day,
-        "trend_7day": trend_7day,
-        "percent_change_7d": percent_change_7d,
-        "saved_count": len(saved_records)
+        "prediction_date":  prediction_date,
+        "prophet_price":    prophet_price,
+        "lstm_price":       lstm_price,
+        "rf_price":         rf_price,
+        "rf_direction":     rf_direction,
+        "ensemble_price":   ensemble_price,
+        "saved_count":      saved
     }
 
+
 if __name__ == "__main__":
-    generate_predictions()
+    result = generate_predictions()
+    print(result)
