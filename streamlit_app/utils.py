@@ -8,7 +8,8 @@ API_BASE_URL = "http://127.0.0.1:8000"
 
 def get_api_url(endpoint: str) -> str:
     """Helper to construct full endpoint URL."""
-    return f"{API_BASE_URL}{endpoint.lstrip('/')}"
+    return f"{API_BASE_URL}/{endpoint.lstrip('/')}"
+
 
 def inject_premium_style():
     """Injects global, premium dark glassmorphism styles and fonts into Streamlit."""
