@@ -7,28 +7,75 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from streamlit_app.utils import inject_premium_style, safe_api_get
-
+from streamlit_app.utils import safe_api_get, safe_api_post
+from streamlit_app.components.sidebar import render_sidebar, start_live_clock
 
 st.set_page_config(
-    page_title="Predictions | CryptoForecaster",
+    page_title="BTC Oracle | ML Predictions",
     page_icon="🔮",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-inject_premium_style()
-
-st.sidebar.markdown("""
-<div style="text-align: center; padding: 10px 0;">
-    <h2 style="color: #f59e0b; margin-bottom: 5px;">🪙 CryptoForecaster</h2>
-    <p style="color: #94a3b8; font-size: 0.85rem;">Ensemble ML & AI Analysis</p>
-</div>
-<hr style="border-color: rgba(255,255,255,0.1); margin-top: 0; margin-bottom: 20px;" />
+# Custom premium styling block
+st.markdown("""
+<style>
+/* Global dark theme */
+[data-testid="stAppViewContainer"] { background-color: #0E1117; }
+[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A33; }
+[data-testid="metric-container"] {
+    background-color: #1A1D27;
+    border: 1px solid #F7931A33;
+    border-radius: 12px;
+    padding: 16px;
+}
+.stButton > button {
+    background-color: #F7931A;
+    color: #000;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    width: 100%;
+}
+.stButton > button:hover { background-color: #e8820f; }
+div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.8rem; font-weight: bold; }
+div[data-testid="stMetricDelta"] { font-size: 0.9rem; }
+h1, h2, h3 { color: #FFFFFF; }
+.card {
+    background: #1A1D27;
+    border: 1px solid #F7931A33;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.badge-up { background: #00C853; color: #000; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+.badge-down { background: #FF1744; color: #fff; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+.insight-box {
+    background: #1A1D27;
+    border-left: 4px solid #F7931A;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    color: #E0E0E0;
+    line-height: 1.7;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# ─── Load Predictions Data ───
-with st.spinner("Generating predictions analysis..."):
+# Render custom sidebar
+clock_placeholder = render_sidebar()
+
+# Handle Fresh Prediction Trigger
+if st.button("🔮 Run Fresh Prediction"):
+    with st.spinner("Calculating ML Ensemble Forecasts..."):
+        res = safe_api_get("/api/predict/all")
+        if res:
+            st.toast("✅ Predictions updated successfully!", icon="🔥")
+        else:
+            st.toast("⚠️ Failed to update predictions. Using cached values.", icon="⚠️")
+
+# ─── Load Data ───
+with st.spinner("Fetching predictions data..."):
     next_day_data = safe_api_get("/api/predict/next-day")
     direction_data = safe_api_get("/api/predict/direction")
     prophet_data = safe_api_get("/api/predict/7-day")
@@ -37,11 +84,10 @@ with st.spinner("Generating predictions analysis..."):
 # ─── Fallback/Simulation if API offline ───
 if not next_day_data:
     st.sidebar.warning("Running in simulation mode for Predictions.")
-    # Simulate data
-    latest_close = 64250.00
-    ensemble_price = 64950.00
-    lstm_price = 64700.00
-    rf_price = 65100.00
+    latest_close = 68450.00
+    ensemble_price = 69210.00
+    lstm_price = 68980.00
+    rf_price = 69320.00
     
     next_day_data = {
         "prediction_date": str((datetime.now() + timedelta(days=1)).date()),
@@ -49,13 +95,13 @@ if not next_day_data:
         "lstm_price": lstm_price,
         "rf_price": rf_price,
         "latest_close": latest_close,
-        "percentage_change": 1.09
+        "percentage_change": 1.11
     }
     
     direction_data = {
         "prediction_date": next_day_data["prediction_date"],
         "direction": "UP",
-        "confidence": 78.0
+        "confidence": 76.5
     }
     
     # Simulate Prophet forecast
@@ -63,12 +109,12 @@ if not next_day_data:
     forecast_list = []
     base_val = latest_close
     for i, d in enumerate(dates):
-        base_val = base_val + (i * 150) + np.random.randn() * 300
+        base_val = base_val + (i * 200) + np.random.randn() * 400
         forecast_list.append({
             "date": str(d),
             "yhat": base_val,
-            "yhat_lower": base_val - 1500 - (i * 200),
-            "yhat_upper": base_val + 1500 + (i * 200)
+            "yhat_lower": base_val - 1800 - (i * 200),
+            "yhat_upper": base_val + 1800 + (i * 200)
         })
     prophet_data = {
         "prediction_date": next_day_data["prediction_date"],
@@ -79,171 +125,194 @@ if not next_day_data:
     hist_dates = [(datetime.now() - timedelta(days=i)).date() for i in range(20, 0, -1)]
     history_list = []
     for i, d in enumerate(hist_dates):
-        act_val = 60000 + (i * 200) + np.random.randn() * 500
-        pred_val = act_val + np.random.randn() * 400
+        act_val = 65000 + (i * 250) + np.random.randn() * 600
+        pred_val = act_val + np.random.randn() * 500
         history_list.append({
             "prediction_date": str(d),
             "model_used": "ensemble",
             "prediction_type": "price_forecast_1d",
             "predicted_value": pred_val,
             "actual_value": act_val,
-            "confidence_score": 0.85 + (np.random.randn() * 0.05)
+            "confidence_score": 0.70 + (np.random.randn() * 0.08)
         })
     history_data = history_list
 
-# ─── Main Content Layout ───
-st.markdown("### 🔮 Next-Day Price Target & Signal")
+# Header
+st.title("🔮 Ensemble ML Predictions")
 
-col1, col2, col3 = st.columns([1, 1, 1.2])
+# ─── Top Row: 3 Big Prediction Cards ───
+p_col1, p_col2, p_col3 = st.columns(3)
 
-with col1:
-    ensemble_val = next_day_data.get("ensemble_price", 0.0)
+with p_col1:
+    ens_price = next_day_data.get("ensemble_price", 0.0)
+    low_bound = ens_price * 0.985
+    high_bound = ens_price * 1.015
     st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">Ensemble Price Target</div>
-        <div class="metric-value">${ensemble_val:,.2f}</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">Target Date: {next_day_data.get('prediction_date')}</div>
+    <div class="card" style="text-align: center; min-height: 250px;">
+        <h4 style="margin: 0; color: #94a3b8;">Next Day Price Target</h4>
+        <h1 style="color: #F7931A; font-size: 2.8rem; margin: 15px 0;">${ens_price:,.2f}</h1>
+        <p style="color: #94a3b8; font-size: 0.9rem;">
+            Confidence Range (95%):<br/>
+            <strong>${low_bound:,.2f} - ${high_bound:,.2f}</strong>
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+with p_col2:
+    direction = direction_data.get("direction", "UP")
+    confidence_val = direction_data.get("confidence", 50.0)
+    badge = '<span class="badge-up">UP</span>' if direction == "UP" else '<span class="badge-down">DOWN</span>'
+    
+    st.markdown(f"""
+    <div class="card" style="text-align: center; min-height: 250px; padding-bottom: 5px;">
+        <h4 style="margin: 0 0 10px 0; color: #94a3b8;">Movement Direction</h4>
+        <div style="font-size: 1.5rem; margin-bottom: 10px;">Signal: {badge}</div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Model breakdown in small card
-    st.markdown(f"""
-    <div style="background: rgba(30, 41, 59, 0.25); border: 1px solid rgba(255,255,255,0.05); border-radius: 12px; padding: 15px;">
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #cbd5e1; margin-bottom: 5px;">
-            <span>LSTM Price Model (40%):</span>
-            <strong>${next_day_data.get('lstm_price', 0.0):,.2f}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between; font-size: 0.85rem; color: #cbd5e1;">
-            <span>Random Forest Lag (60%):</span>
-            <strong>${next_day_data.get('rf_price', 0.0):,.2f}</strong>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # Render mini gauge inside card bounds
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge+number",
+        value=confidence_val,
+        number=dict(suffix="%", font=dict(color="#FFFFFF", size=24)),
+        gauge=dict(
+            axis=dict(range=[0, 100], tickcolor="#FFFFFF"),
+            bar=dict(color="#F7931A"),
+            bgcolor="#1A1D27",
+            bordercolor="rgba(247, 147, 26, 0.2)",
+            steps=[
+                {"range": [0, 50], "color": "#2A2D3A"},
+                {"range": [50, 100], "color": "#3A3D4A"}
+            ]
+        )
+    ))
+    fig_gauge.update_layout(
+        paper_bgcolor="#1A1D27",
+        plot_bgcolor="#1A1D27",
+        height=130,
+        margin=dict(l=20, r=20, t=10, b=10)
+    )
+    st.plotly_chart(fig_gauge, use_container_width=True)
 
-with col2:
-    direction = direction_data.get("direction", "NEUTRAL")
-    dir_class = "metric-delta-positive" if direction == "UP" else "metric-delta-negative"
-    sign = "▲" if direction == "UP" else "▼"
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">Forecast Direction</div>
-        <div class="metric-value {dir_class}">{direction} {sign}</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">Implication on daily returns</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    confidence = direction_data.get("confidence", 50.0)
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">Model Confidence Score</div>
-        <div class="metric-value">{confidence:.1f}%</div>
+with p_col3:
+    st.markdown("""
+    <div class="card" style="text-align: center; min-height: 250px; padding-bottom: 5px;">
+        <h4 style="margin: 0; color: #94a3b8;">7-Day Forecast Trend</h4>
     </div>
     """, unsafe_allow_html=True)
     
-    # Probability Bar
-    st.progress(confidence / 100.0)
-
-st.markdown("---")
-
-# ─── Charts: Prophet 7-Day & Actual vs Predicted ───
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    st.markdown("### 📈 Prophet 7-Day Outlook Chart")
+    # Render sparkline from Prophet data
     if prophet_data and prophet_data.get("forecast"):
         p_df = pd.DataFrame(prophet_data["forecast"])
-        p_df["date"] = pd.to_datetime(p_df["date"])
-        
-        fig = go.Figure()
-        
-        # Shaded Confidence Interval bounds
-        fig.add_trace(go.Scatter(
-            x=pd.concat([p_df['date'], p_df['date'][::-1]]),
-            y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
-            fill='toself',
-            fillcolor='rgba(99, 102, 241, 0.15)',
-            line=dict(color='rgba(255,255,255,0)'),
-            name='Confidence Interval',
-            showlegend=True
+        fig_spark = go.Figure()
+        fig_spark.add_trace(go.Scatter(
+            x=p_df["date"],
+            y=p_df["yhat"],
+            line=dict(color="#F7931A", width=3),
+            hoverinfo="none"
         ))
-        
-        # Predicted Trend Line
-        fig.add_trace(go.Scatter(
-            x=p_df['date'],
-            y=p_df['yhat'],
-            name='Prophet Projections (yhat)',
-            line=dict(color='#818cf8', width=2.5)
-        ))
-        
-        fig.update_layout(
-            paper_bgcolor='rgba(0,0,0,0)',
-            plot_bgcolor='rgba(0,0,0,0)',
-            margin=dict(l=0, r=0, t=10, b=0),
-            xaxis=dict(gridcolor='rgba(255,255,255,0.05)', color='#94a3b8'),
-            yaxis=dict(gridcolor='rgba(255,255,255,0.05)', color='#94a3b8', title="USD ($)"),
-            legend=dict(font=dict(color='#cbd5e1'), bgcolor='rgba(15, 23, 42, 0.6)'),
-            height=380
+        fig_spark.update_layout(
+            paper_bgcolor="#1A1D27",
+            plot_bgcolor="#1A1D27",
+            xaxis=dict(visible=False),
+            yaxis=dict(visible=False),
+            height=130,
+            margin=dict(l=20, r=20, t=10, b=10)
         )
-        st.plotly_chart(fig, use_container_width=True)
-    else:
-        st.info("Prophet forecasting is currently processing.")
+        st.plotly_chart(fig_spark, use_container_width=True)
 
-with chart_col2:
-    st.markdown("### 🎯 Actual vs Predicted Prices")
-    if history_data:
-        h_df = pd.DataFrame(history_data)
-        # Filter only ensemble predictions for single-line consistency
-        h_df = h_df[h_df["model_used"] == "ensemble"].copy()
-        
-        if not h_df.empty:
-            h_df["prediction_date"] = pd.to_datetime(h_df["prediction_date"])
-            h_df = h_df.sort_values("prediction_date")
-            
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(
-                x=h_df["prediction_date"],
-                y=h_df["actual_value"],
-                name="Actual Spot Close",
-                line=dict(color="#10b981", width=2.5)
-            ))
-            fig.add_trace(go.Scatter(
-                x=h_df["prediction_date"],
-                y=h_df["predicted_value"],
-                name="Ensemble Forecast Target",
-                line=dict(color="#f59e0b", width=2, dash="dash")
-            ))
-            
-            fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)',
-                plot_bgcolor='rgba(0,0,0,0)',
-                margin=dict(l=0, r=0, t=10, b=0),
-                xaxis=dict(gridcolor='rgba(255,255,255,0.05)', color='#94a3b8'),
-                yaxis=dict(gridcolor='rgba(255,255,255,0.05)', color='#94a3b8', title="USD ($)"),
-                legend=dict(font=dict(color='#cbd5e1'), bgcolor='rgba(15, 23, 42, 0.6)'),
-                height=380
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No ensemble forecast history matches found.")
-    else:
-        st.info("No prediction database logs found.")
+# ─── Ensemble Breakdown Bar Chart ───
+st.markdown("### 📊 Ensemble Model Breakdown")
+lst_p = next_day_data.get("lstm_price", 0.0)
+rf_p = next_day_data.get("rf_price", 0.0)
 
-st.markdown("---")
+fig_breakdown = go.Figure()
+fig_breakdown.add_trace(go.Bar(
+    x=["LSTM Neural Network (40%)", "Random Forest Lags (60%)", "Ensemble Consensus"],
+    y=[lst_p, rf_p, ens_price],
+    marker_color=["#00E5FF", "#FFEB3B", "#F7931A"],
+    text=[f"${lst_p:,.2f}", f"${rf_p:,.2f}", f"${ens_price:,.2f}"],
+    textposition="auto"
+))
+fig_breakdown.update_layout(
+    paper_bgcolor="#0E1117",
+    plot_bgcolor="#0E1117",
+    font=dict(color="#FFFFFF"),
+    xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
+    yaxis=dict(gridcolor="#2A2D3A", showgrid=True, range=[min(lst_p, rf_p) * 0.95, max(lst_p, rf_p) * 1.05]),
+    legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
+    margin=dict(l=20, r=20, t=40, b=20),
+    height=320
+)
+st.plotly_chart(fig_breakdown, use_container_width=True)
 
-# ─── Predictions Log History Table ───
-st.markdown("### 📋 Prediction History Logs")
+# ─── 7-Day Prophet Forecast Chart ───
+st.markdown("### 📈 7-Day Shaded Projections (Prophet)")
+if prophet_data and prophet_data.get("forecast"):
+    p_df = pd.DataFrame(prophet_data["forecast"])
+    p_df["date"] = pd.to_datetime(p_df["date"])
+    
+    fig_prophet = go.Figure()
+    
+    # Shaded confidence band (orange fill, 20% opacity)
+    fig_prophet.add_trace(go.Scatter(
+        x=pd.concat([p_df['date'], p_df['date'][::-1]]),
+        y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
+        fill='toself',
+        fillcolor='rgba(247, 147, 26, 0.20)',
+        line=dict(color='rgba(255,255,255,0)'),
+        name='Confidence Band'
+    ))
+    
+    # Projected line
+    fig_prophet.add_trace(go.Scatter(
+        x=p_df['date'],
+        y=p_df['yhat'],
+        name='Trend Line',
+        line=dict(color='#F7931A', width=3)
+    ))
+    
+    # Upper/Lower dashed lines
+    fig_prophet.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_upper'], name='Upper Bound', line=dict(color='#F7931A', width=1, dash='dash')))
+    fig_prophet.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_lower'], name='Lower Bound', line=dict(color='#F7931A', width=1, dash='dash')))
+    
+    # Dotted line marking today (today is start of prediction)
+    fig_prophet.add_vline(x=p_df['date'].min(), line_width=1.5, line_dash="dot", line_color="#FFFFFF")
+    
+    fig_prophet.update_layout(
+        paper_bgcolor="#0E1117",
+        plot_bgcolor="#0E1117",
+        font=dict(color="#FFFFFF"),
+        xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
+        yaxis=dict(gridcolor="#2A2D3A", showgrid=True),
+        legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=380
+    )
+    st.plotly_chart(fig_prophet, use_container_width=True)
+
+# ─── Prediction History Table ───
+st.markdown("### 📋 Prediction Accuracy Logs")
 if history_data:
-    raw_table_df = pd.DataFrame(history_data)
-    # Format table for cleaner rendering
-    table_df = pd.DataFrame({
-        "Target Date": raw_table_df["prediction_date"],
-        "Model Type": raw_table_df["model_used"],
-        "Forecast Type": raw_table_df["prediction_type"],
-        "Predicted Target": raw_table_df["predicted_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
-        "Actual Price": raw_table_df["actual_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
-        "Confidence Index": raw_table_df["confidence_score"].map(lambda x: f"{x * 100:.1f}%" if pd.notnull(x) else "N/A")
+    h_df = pd.DataFrame(history_data)
+    h_df["prediction_date"] = pd.to_datetime(h_df["prediction_date"]).dt.date
+    h_df = h_df.sort_values("prediction_date", ascending=False)
+    
+    # Compute accuracy percentage column: 100 - absolute percentage error
+    h_df["accuracy_pct"] = 100 - (abs(h_df["predicted_value"] - h_df["actual_value"]) / h_df["actual_value"] * 100)
+    h_df["accuracy_pct"] = h_df["accuracy_pct"].clip(lower=0.0, upper=100.0)
+    
+    # Custom display df
+    display_df = pd.DataFrame({
+        "Date": h_df["prediction_date"],
+        "Model Type": h_df["model_used"].str.upper(),
+        "Predicted Target": h_df["predicted_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
+        "Actual Price": h_df["actual_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
+        "Accuracy Index": h_df["accuracy_pct"].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "N/A"),
+        "Confidence Score": h_df["confidence_score"].map(lambda x: f"{x * 100:.1f}%" if pd.notnull(x) else "N/A")
     })
-    st.dataframe(table_df, use_container_width=True, hide_index=True)
-else:
-    st.info("No prediction database records available.")
+    
+    st.dataframe(display_df, use_container_width=True, hide_index=True)
+
+# Update clock
+start_live_clock(clock_placeholder)

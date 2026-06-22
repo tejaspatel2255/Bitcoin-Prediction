@@ -4,239 +4,249 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")
 
 import streamlit as st
 import pandas as pd
+import numpy as np
 import requests
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from streamlit_app.utils import inject_premium_style, safe_api_get, get_api_url
-
+from streamlit_app.utils import safe_api_get
+from streamlit_app.components.sidebar import render_sidebar, start_live_clock
 
 st.set_page_config(
-    page_title="Dashboard | Bitcoin Market Analytics",
+    page_title="BTC Oracle | Interactive Charts",
     page_icon="📈",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-inject_premium_style()
-
-st.sidebar.markdown("""
-<div style="text-align: center; padding: 10px 0;">
-    <h2 style="color: #f59e0b; margin-bottom: 5px;">🪙 CryptoForecaster</h2>
-    <p style="color: #94a3b8; font-size: 0.85rem;">Ensemble ML & AI Analysis</p>
-</div>
-<hr style="border-color: rgba(255,255,255,0.1); margin-top: 0; margin-bottom: 20px;" />
+# Custom premium styling block
+st.markdown("""
+<style>
+/* Global dark theme */
+[data-testid="stAppViewContainer"] { background-color: #0E1117; }
+[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A33; }
+[data-testid="metric-container"] {
+    background-color: #1A1D27;
+    border: 1px solid #F7931A33;
+    border-radius: 12px;
+    padding: 16px;
+}
+.stButton > button {
+    background-color: #F7931A;
+    color: #000;
+    border-radius: 8px;
+    font-weight: bold;
+    border: none;
+    width: 100%;
+}
+.stButton > button:hover { background-color: #e8820f; }
+div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.8rem; font-weight: bold; }
+div[data-testid="stMetricDelta"] { font-size: 0.9rem; }
+h1, h2, h3 { color: #FFFFFF; }
+.card {
+    background: #1A1D27;
+    border: 1px solid #F7931A33;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+}
+.badge-up { background: #00C853; color: #000; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+.badge-down { background: #FF1744; color: #fff; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
+.insight-box {
+    background: #1A1D27;
+    border-left: 4px solid #F7931A;
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin: 12px 0;
+    color: #E0E0E0;
+    line-height: 1.7;
+}
+</style>
 """, unsafe_allow_html=True)
 
-# ─── Live Stats Fetching ───
-@st.cache_data(ttl=60)
-def fetch_live_bitcoin_data() -> dict:
-    """Fetch live data from CoinGecko with error fallback."""
-    try:
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true&include_24hr_change=true"
-        r = requests.get(url, timeout=8)
-        if r.status_code == 200:
-            data = r.json().get("bitcoin", {})
-            return {
-                "price": float(data.get("usd", 0.0)),
-                "market_cap": float(data.get("usd_market_cap", 0.0)),
-                "volume_24h": float(data.get("usd_24h_vol", 0.0)),
-                "change_24h": float(data.get("usd_24h_change", 0.0))
-            }
-    except Exception as e:
-        st.sidebar.warning(f"CoinGecko API rate limit hit: using fallback price feed.")
-    return {}
+# Render custom sidebar
+clock_placeholder = render_sidebar()
 
-# ─── Historical DB Data Fetching ───
+# ─── Data Fetching ───
 @st.cache_data(ttl=120)
-def fetch_historical_dataset() -> pd.DataFrame:
-    """Fetch last 90 days of daily historical records from backend."""
-    data = safe_api_get("/api/data/historical?days=90")
+def fetch_chart_data(days_input: str) -> pd.DataFrame:
+    # Map range selector to days count
+    days_map = {"7D": 7, "30D": 30, "90D": 90, "1Y": 365, "All": 1000}
+    days = days_map.get(days_input, 90)
+    
+    data = safe_api_get(f"/api/data/historical?days={days}")
     if not data:
-        # Fallback simulated dataframe if backend is down
-        import numpy as np
+        # Generate robust simulation fallback if backend/DB is not accessible
         from datetime import datetime, timedelta
-        dates = [datetime.now().date() - timedelta(days=i) for i in range(90, 0, -1)]
-        close = 60000.0
+        dates = [datetime.now().date() - timedelta(days=i) for i in range(days, 0, -1)]
+        close = 68450.0
         records = []
         for i, d in enumerate(dates):
-            close = close + np.random.randn() * 600 + (100 if i > 50 else -50)
+            close = close + np.random.randn() * 700 + (150 if i > (days * 0.6) else -100)
             records.append({
                 "date": str(d),
-                "open": close - 200,
-                "high": close + 400,
-                "low": close - 300,
+                "open": close - 250,
+                "high": close + 500,
+                "low": close - 400,
                 "close": close,
-                "volume": 28000000000 + np.random.randn() * 1000000000,
+                "volume": 25000000000 + np.random.randn() * 2000000000,
                 "sma_7": close * 0.99,
-                "sma_21": close * 0.98,
-                "sma_50": close * 0.97,
-                "ema_12": close * 0.995,
-                "ema_26": close * 0.985,
-                "rsi_14": 52.0 + np.random.randn() * 8,
-                "macd": 100.0 + np.random.randn() * 50,
-                "macd_signal": 80.0 + np.random.randn() * 40,
+                "sma_21": close * 0.985,
+                "sma_50": close * 0.975,
+                "rsi_14": 45.0 + np.random.randn() * 10,
+                "macd": 200.0 + np.random.randn() * 50,
+                "macd_signal": 180.0 + np.random.randn() * 40,
                 "bb_mid": close,
-                "bb_upper": close * 1.05,
-                "bb_lower": close * 0.95,
-                "source": "simulated"
+                "bb_upper": close * 1.04,
+                "bb_lower": close * 0.96,
+                "volatility": 2.45
             })
         return pd.DataFrame(records)
     return pd.DataFrame(data)
 
-# Fetch data
-live_stats = fetch_live_bitcoin_data()
-df = fetch_historical_dataset()
+# Header
+st.title("📈 Interactive Market Analytics")
 
-# If live_stats failed, use last row of df as fallback
-if not live_stats and not df.empty:
-    last_row = df.iloc[-1]
-    live_stats = {
-        "price": float(last_row.get("close", 0.0)),
-        "market_cap": float(last_row.get("close", 0.0)) * 19700000, # Approx supply
-        "volume_24h": float(last_row.get("volume", 0.0)),
-        "change_24h": float(last_row.get("daily_return", 0.0)) * 100
-    }
+# Time Range Selector: [7D | 30D | 90D | 1Y | All]
+range_sel = st.radio(
+    "Select Range",
+    options=["7D", "30D", "90D", "1Y", "All"],
+    index=2,
+    horizontal=True
+)
 
-# ─── Live Market Banner ───
-st.markdown("### 📊 Live Bitcoin (BTC) Price Monitor")
+df = fetch_chart_data(range_sel)
+df['date'] = pd.to_datetime(df['date'])
+df = df.sort_values('date').reset_index(drop=True)
 
-col1, col2, col3, col4 = st.columns(4)
+# 2-Column layout: Left = Chart, Right = Indicator metrics
+col_left, col_right = st.columns([4, 1.2])
 
-with col1:
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">Live Spot Price</div>
-        <div class="metric-value">${live_stats.get('price', 0.0):,.2f}</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">BTC/USD Spot</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col2:
-    change = live_stats.get('change_24h', 0.0)
-    delta_class = "metric-delta-positive" if change >= 0 else "metric-delta-negative"
-    sign = "+" if change >= 0 else ""
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">24h Change</div>
-        <div class="metric-value {delta_class}">{sign}{change:.2f}%</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">Daily Return</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col3:
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">24h Trade Volume</div>
-        <div class="metric-value">${live_stats.get('volume_24h', 0.0):,.0f}</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">Global Exchanges</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-with col4:
-    st.markdown(f"""
-    <div class="glass-card">
-        <div class="metric-title">Market Capitalization</div>
-        <div class="metric-value">${live_stats.get('market_cap', 0.0):,.0f}</div>
-        <div style="color: #94a3b8; font-size: 0.85rem;">Circulating Valuation</div>
-    </div>
-    """, unsafe_allow_html=True)
-
-# ─── Charts Section ───
-st.markdown("### 📈 Interactive Candlestick & Technical Indicators")
-
-# Layout parameters
-show_sma = st.sidebar.checkbox("Show Simple Moving Averages (SMA 7/21/50)", value=True)
-show_ema = st.sidebar.checkbox("Show Exponential Moving Averages (EMA 12/26)", value=False)
-show_bb = st.sidebar.checkbox("Show Bollinger Bands", value=True)
-
-if not df.empty:
-    df['date'] = pd.to_datetime(df['date'])
-    df = df.sort_values('date')
-    
-    # Create subplots: Row 1 = Price + Indicators, Row 2 = Volume, Row 3 = RSI, Row 4 = MACD
-    fig = make_subplots(
-        rows=4, cols=1, 
-        shared_xaxes=True, 
-        vertical_spacing=0.03,
-        row_heights=[0.5, 0.15, 0.15, 0.2]
-    )
-    
-    # 1. Main Candlestick Chart
-    fig.add_trace(go.Candlestick(
-        x=df['date'],
-        open=df['open'],
-        high=df['high'],
-        low=df['low'],
-        close=df['close'],
-        name='BTC OHLC',
-        increasing_line_color='#10b981',
-        decreasing_line_color='#ef4444'
-    ), row=1, col=1)
-    
-    # Overlays
-    if show_sma:
-        fig.add_trace(go.Scatter(x=df['date'], y=df['sma_7'], name='SMA 7', line=dict(color='#818cf8', width=1.5)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['sma_21'], name='SMA 21', line=dict(color='#3b82f6', width=1.5)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['sma_50'], name='SMA 50', line=dict(color='#1d4ed8', width=1.5)), row=1, col=1)
+with col_left:
+    if not df.empty:
+        # Create subplots
+        fig = make_subplots(
+            rows=3, cols=1,
+            shared_xaxes=True,
+            vertical_spacing=0.03,
+            row_heights=[0.55, 0.20, 0.25]
+        )
         
-    if show_ema:
-        fig.add_trace(go.Scatter(x=df['date'], y=df['ema_12'], name='EMA 12', line=dict(color='#fb7185', width=1.5)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['ema_26'], name='EMA 26', line=dict(color='#e11d48', width=1.5)), row=1, col=1)
+        # 1. Main Candlestick Chart
+        fig.add_trace(go.Candlestick(
+            x=df['date'],
+            open=df['open'],
+            high=df['high'],
+            low=df['low'],
+            close=df['close'],
+            name='BTC OHLC',
+            increasing_line_color='#00C853',
+            decreasing_line_color='#FF1744'
+        ), row=1, col=1)
         
-    if show_bb:
-        fig.add_trace(go.Scatter(x=df['date'], y=df['bb_upper'], name='BB Upper', line=dict(color='rgba(156, 163, 175, 0.5)', width=1, dash='dash')), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['bb_mid'], name='BB Mid', line=dict(color='rgba(156, 163, 175, 0.3)', width=1)), row=1, col=1)
-        fig.add_trace(go.Scatter(x=df['date'], y=df['bb_lower'], name='BB Lower', line=dict(color='rgba(156, 163, 175, 0.5)', width=1, dash='dash')), row=1, col=1)
-
-    # 2. Volume Chart
-    fig.add_trace(go.Bar(
-        x=df['date'],
-        y=df['volume'],
-        name='Volume',
-        marker_color='rgba(148, 163, 184, 0.3)'
-    ), row=2, col=1)
-    
-    # 3. RSI Chart
-    fig.add_trace(go.Scatter(
-        x=df['date'],
-        y=df['rsi_14'],
-        name='RSI (14)',
-        line=dict(color='#a855f7', width=2)
-    ), row=3, col=1)
-    
-    # Add RSI thresholds (30, 70)
-    fig.add_shape(type="line", x0=df['date'].min(), y0=70, x1=df['date'].max(), y1=70, line=dict(color="#ef4444", width=1, dash="dash"), row=3, col=1)
-    fig.add_shape(type="line", x0=df['date'].min(), y0=30, x1=df['date'].max(), y1=30, line=dict(color="#10b981", width=1, dash="dash"), row=3, col=1)
-
-    # 4. MACD Chart
-    macd_diff = df['macd'] - df['macd_signal']
-    fig.add_trace(go.Scatter(x=df['date'], y=df['macd'], name='MACD', line=dict(color='#f59e0b', width=1.5)), row=4, col=1)
-    fig.add_trace(go.Scatter(x=df['date'], y=df['macd_signal'], name='Signal Line', line=dict(color='#3b82f6', width=1.5)), row=4, col=1)
-    fig.add_trace(go.Bar(x=df['date'], y=macd_diff, name='MACD Histogram', marker_color='rgba(99, 102, 241, 0.4)'), row=4, col=1)
-
-    # Clean layout styling
-    fig.update_layout(
-        xaxis_rangeslider_visible=False,
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        margin=dict(l=0, r=0, t=10, b=0),
-        legend=dict(
-            orientation="h",
-            yanchor="bottom",
-            y=1.02,
-            xanchor="right",
-            x=1,
-            font=dict(color='#cbd5e1'),
-            bgcolor='rgba(15, 23, 42, 0.6)'
-        ),
-        height=800
-    )
-    
-    # Grid lines and formatting
-    for i in range(1, 5):
-        fig.update_yaxes(gridcolor='rgba(255, 255, 255, 0.05)', color='#94a3b8', row=i, col=1)
-        fig.update_xaxes(gridcolor='rgba(255, 255, 255, 0.05)', color='#94a3b8', row=i, col=1)
+        # Overlays
+        # SMA 7 (white)
+        if 'sma_7' in df:
+            fig.add_trace(go.Scatter(x=df['date'], y=df['sma_7'], name='SMA 7', line=dict(color='#FFFFFF', width=1.5)), row=1, col=1)
+        # SMA 21 (yellow)
+        if 'sma_21' in df:
+            fig.add_trace(go.Scatter(x=df['date'], y=df['sma_21'], name='SMA 21', line=dict(color='#FFEB3B', width=1.5)), row=1, col=1)
+        # SMA 50 (cyan)
+        if 'sma_50' in df:
+            fig.add_trace(go.Scatter(x=df['date'], y=df['sma_50'], name='SMA 50', line=dict(color='#00E5FF', width=1.5)), row=1, col=1)
+            
+        # Bollinger Bands (purple, dashed)
+        if 'bb_upper' in df and 'bb_lower' in df:
+            fig.add_trace(go.Scatter(x=df['date'], y=df['bb_upper'], name='BB Upper', line=dict(color='#E040FB', width=1, dash='dash')), row=1, col=1)
+            fig.add_trace(go.Scatter(x=df['date'], y=df['bb_lower'], name='BB Lower', line=dict(color='#E040FB', width=1, dash='dash')), row=1, col=1)
+            
+        # 2. Volume Chart (orange volume bars)
+        fig.add_trace(go.Bar(
+            x=df['date'],
+            y=df['volume'],
+            name='Volume',
+            marker_color='#F7931A',
+            opacity=0.85
+        ), row=2, col=1)
         
-    st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("No charting data available. Check system connection.")
+        # 3. RSI Chart below (with 70/30 thresholds in red/green)
+        if 'rsi_14' in df:
+            fig.add_trace(go.Scatter(
+                x=df['date'],
+                y=df['rsi_14'],
+                name='RSI (14)',
+                line=dict(color='#F7931A', width=2)
+            ), row=3, col=1)
+            fig.add_shape(type="line", x0=df['date'].min(), y0=70, x1=df['date'].max(), y1=70, line=dict(color="#FF1744", width=1.2, dash="dash"), row=3, col=1)
+            fig.add_shape(type="line", x0=df['date'].min(), y0=30, x1=df['date'].max(), y1=30, line=dict(color="#00C853", width=1.2, dash="dash"), row=3, col=1)
+            
+        # Apply standard layout template requested
+        fig.update_layout(
+            xaxis_rangeslider_visible=False,
+            paper_bgcolor="#0E1117",
+            plot_bgcolor="#0E1117",
+            font=dict(color="#FFFFFF"),
+            xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
+            yaxis=dict(gridcolor="#2A2D3A", showgrid=True),
+            legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
+            margin=dict(l=20, r=20, t=40, b=20),
+            height=780
+        )
+        
+        # Watermark "BTC Oracle" in the corner
+        fig.add_annotation(
+            text="BTC Oracle",
+            xref="paper", yref="paper",
+            x=0.01, y=0.98,
+            showarrow=False,
+            font=dict(size=20, color="rgba(247, 147, 26, 0.15)", family="Arial Black")
+        )
+        
+        # Format axes
+        for r in range(1, 4):
+            fig.update_yaxes(gridcolor="#2A2D3A", showgrid=True, color="#FFFFFF", row=r, col=1)
+            fig.update_xaxes(gridcolor="#2A2D3A", showgrid=True, color="#FFFFFF", row=r, col=1)
+            
+        st.plotly_chart(fig, use_container_width=True)
+
+with col_right:
+    st.markdown("<h4 style='text-align: center;'>Live Technical Metrics</h4>", unsafe_allow_html=True)
+    if not df.empty:
+        latest = df.iloc[-1]
+        
+        # RSI Card
+        rsi_val = latest.get('rsi_14', 50.0)
+        rsi_status = "Overbought" if rsi_val >= 70 else ("Oversold" if rsi_val <= 30 else "Neutral")
+        st.metric(label="RSI (14)", value=f"{rsi_val:.2f}", delta=rsi_status)
+        
+        # MACD Card
+        macd_val = latest.get('macd', 0.0)
+        macd_sig = latest.get('macd_signal', 0.0)
+        st.metric(label="MACD Signal Line", value=f"{macd_sig:,.2f}", delta=f"MACD: {macd_val:,.2f}")
+        
+        # SMA Distances
+        close_price = latest.get('close', 0.0)
+        sma7 = latest.get('sma_7', close_price)
+        sma21 = latest.get('sma_21', close_price)
+        dist_pct = ((close_price - sma21) / sma21) * 100 if sma21 else 0
+        st.metric(
+            label="Distance to SMA 21",
+            value=f"{dist_pct:+.2f}%",
+            delta=f"Close: ${close_price:,.2f}"
+        )
+        
+        # Volatility %
+        vol_pct = latest.get('volatility', 2.0)
+        st.metric(label="Daily Volatility", value=f"{vol_pct:.2f}%", delta="Historical 30d")
+        
+        # Quick explanations
+        st.markdown(f"""
+        <div class="card" style="margin-top: 15px; font-size: 0.8rem; line-height: 1.5; color: #94a3b8;">
+            <strong>Interpretation Guidelines:</strong><br/>
+            • <b>RSI &gt; 70</b>: Market overbought (sell signal)<br/>
+            • <b>RSI &lt; 30</b>: Market oversold (buy signal)<br/>
+            • <b>Positive SMA Distance</b>: Indicates upward momentum.
+        </div>
+        """, unsafe_allow_html=True)
+
+# Update custom clock at page finish
+start_live_clock(clock_placeholder)
