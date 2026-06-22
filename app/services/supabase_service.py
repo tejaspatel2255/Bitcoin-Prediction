@@ -191,3 +191,26 @@ def get_latest_insights(limit: int) -> List[Dict[str, Any]]:
     except Exception as e:
         logger.error(f"Error in get_latest_insights: {e}")
         return []
+
+def get_model_metrics(limit: int = 10) -> List[Dict[str, Any]]:
+    """
+    Retrieve historical model training metrics from the model_metrics table.
+    """
+    if not supabase:
+        logger.error("Supabase client is not initialized.")
+        return []
+
+    try:
+        logger.info(f"Fetching last {limit} model metrics from Supabase...")
+        response = (
+            supabase.table("model_metrics")
+            .select("*")
+            .order("evaluated_at", desc=True)
+            .limit(limit)
+            .execute()
+        )
+        return response.data
+    except Exception as e:
+        logger.error(f"Error in get_model_metrics: {e}")
+        return []
+
