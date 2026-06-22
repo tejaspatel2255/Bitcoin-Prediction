@@ -11,7 +11,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 import tensorflow as tf
 from tensorflow.keras.models import Sequential, load_model as tf_load_model
-from tensorflow.keras.layers import LSTM, Dense, Dropout
+from tensorflow.keras.layers import Input, LSTM, Dense, Dropout
 from tensorflow.keras.callbacks import EarlyStopping
 
 from app.core.logger import get_logger
@@ -84,9 +84,10 @@ def train(df: pd.DataFrame, epochs: int = 50, batch_size: int = 32) -> tuple:
     X_train, X_val = X[:split_idx], X[split_idx:]
     y_train, y_val = y[:split_idx], y[split_idx:]
 
-    # Build 2-layer LSTM model
+    # Build 2-layer LSTM model using explicit Input layer (TF 2.16+ compatible)
     model = Sequential([
-        LSTM(units=100, return_sequences=True, input_shape=(SEQUENCE_LENGTH, 1)),
+        Input(shape=(SEQUENCE_LENGTH, 1)),
+        LSTM(units=100, return_sequences=True),
         Dropout(0.2),
         LSTM(units=50, return_sequences=False),
         Dropout(0.2),

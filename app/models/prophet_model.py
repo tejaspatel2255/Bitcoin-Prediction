@@ -1,8 +1,9 @@
 import os
-import pickle
+import json
 import numpy as np
 import pandas as pd
 from prophet import Prophet
+from prophet.serialize import model_to_dict, model_from_dict
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from app.core.logger import get_logger
 
@@ -101,24 +102,25 @@ def evaluate(model: Prophet, df: pd.DataFrame) -> dict:
 
 def save_model(model: Prophet, path: str = MODEL_PATH) -> None:
     """
-    Serialize and save the trained Prophet model to disk using pickle.
+    Serialize and save the trained Prophet model to disk using JSON (prophet.serialize).
+    This is more reliable than pickle across different Prophet/pystan versions.
 
     Args:
         model: Fitted Prophet model.
-        path:  File path to save the pickle file.
+        path:  File path to save the JSON file.
     """
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "wb") as f:
-        pickle.dump(model, f)
-    logger.info(f"Prophet model saved to {path}")
+    with open(path, "w") as f:
+        json.dump(model_to_dict(model), f)
+    logger.info(f"Prophet model saved (JSON) to {path}")
 
 
 def load_model(path: str = MODEL_PATH) -> Prophet:
     """
-    Load a serialized Prophet model from disk.
+    Load a serialized Prophet model from disk (JSON format).
 
     Args:
-        path: File path of the pickle file.
+        path: File path of the JSON file.
 
     Returns:
         Deserialized Prophet model instance.
@@ -128,7 +130,7 @@ def load_model(path: str = MODEL_PATH) -> Prophet:
     """
     if not os.path.exists(path):
         raise FileNotFoundError(f"Prophet model not found at path: {path}. Please run training first.")
-    with open(path, "rb") as f:
-        model = pickle.load(f)
+    with open(path, "r") as f:
+        model = model_from_dict(json.load(f))
     logger.info(f"Prophet model loaded from {path}")
     return model

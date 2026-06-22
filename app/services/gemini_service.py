@@ -1,90 +1,319 @@
-import google.generativeai as genai
+"""
+app/services/gemini_service.py — AI Insight Engine using OpenRouter API.
+
+OpenRouter is OpenAI-compatible and provides access to Google Gemini Flash 1.5
+on a generous free tier via the standard OpenAI Python SDK.
+
+Base URL:  https://openrouter.ai/api/v1
+Model:     google/gemini-flash-1.5
+SDK:       openai (pip install openai>=1.0.0)
+"""
+
+import time
+import pandas as pd
+from openai import OpenAI, RateLimitError, APIError
 from app.core.config import settings
 from app.core.logger import get_logger
+from app.core.prompts import (
+    MARKET_SUMMARY_PROMPT,
+    PREDICTION_EXPLANATION_PROMPT,
+    RISK_ANALYSIS_PROMPT,
+    SEVEN_DAY_OUTLOOK_PROMPT
+)
+from app.services.supabase_service import insert_gemini_insight
 
 logger = get_logger("gemini_service")
 
-def generate_market_insight(prediction_data: dict, latest_price_data: dict) -> dict:
+# ─── OpenRouter Configuration ─────────────────────────────────────────────────
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+OPENROUTER_MODEL    = "google/gemini-flash-1.5"
+MAX_RETRIES         = 3
+_client: OpenAI | None = None
+
+
+def init_openrouter() -> OpenAI:
     """
-    Generate conversational market analysis and sentiment using Google Gemini 1.5 Flash.
+    Initialize and return an OpenAI client pointed at the OpenRouter API.
+    Uses a module-level singleton to avoid re-instantiating on every call.
+
+    Returns:
+        Configured OpenAI client instance.
     """
-    api_key = settings.GEMINI_API_KEY
+    global _client
+    if _client is not None:
+        return _client
+
+    api_key = settings.OPENROUTER_API_KEY
     if not api_key:
-        logger.warning("GEMINI_API_KEY not configured. Returning fallback AI insight.")
-        return {
-            "insight_text": "AI Insights are currently unavailable because the Google Gemini API Key is not set in the configuration. Please check your environment variables.",
-            "sentiment_score": "NEUTRAL"
+        logger.warning("OPENROUTER_API_KEY is not set. AI insight calls will be skipped.")
+        return None
+
+    _client = OpenAI(
+        base_url=OPENROUTER_BASE_URL,
+        api_key=api_key,
+        default_headers={
+            "HTTP-Referer": "http://localhost:8501",  # Identifies the app to OpenRouter
+            "X-Title":      "BTC Prediction App"
         }
+    )
+    logger.info(f"OpenRouter client initialized. Model: {OPENROUTER_MODEL}")
+    return _client
 
-    try:
-        # Configure Gemini SDK
-        genai.configure(api_key=api_key)
-        
-        # Instantiate Gemini 1.5 Flash model
-        model = genai.GenerativeModel('gemini-1.5-flash')
-        
-        # Build prompt using prediction and technical data
-        prompt = f"""
-You are an expert financial analyst and cryptocurrency researcher.
-Analyze the following technical indicators and machine learning models' predictions for Bitcoin (BTC) and provide a concise, professional market report (approx 200-300 words).
 
-Latest Market Data:
-- Date: {latest_price_data.get('date')}
-- Close Price: ${latest_price_data.get('close_price'):,.2f}
-- Open Price: ${latest_price_data.get('open_price'):,.2f}
-- High: ${latest_price_data.get('high_price'):,.2f} / Low: ${latest_price_data.get('low_price'):,.2f}
-- Volume: {latest_price_data.get('volume'):,.0f}
-- RSI (14): {latest_price_data.get('rsi_14') if latest_price_data.get('rsi_14') else 'N/A'}
-- MACD Line: {latest_price_data.get('macd') if latest_price_data.get('macd') else 'N/A'}
-- MACD Signal Line: {latest_price_data.get('macd_signal') if latest_price_data.get('macd_signal') else 'N/A'}
+def _call_openrouter(prompt: str, prompt_type: str, context_data: dict) -> str:
+    """
+    Internal helper: send a prompt to OpenRouter and return the response text.
+    Implements exponential backoff retry on rate limit / API errors.
+    Persists prompt + response to Supabase gemini_insights table.
 
-ML Models Predictions (for tomorrow {prediction_data.get('prediction_date')}):
-- Prophet Predicted Close: ${prediction_data.get('prophet_price'):,.2f}
-- LSTM Predicted Close: ${prediction_data.get('lstm_price'):,.2f}
-- Scikit-learn (Random Forest) Predicted Close: ${prediction_data.get('sklearn_price'):,.2f}
-- Ensemble Predicted Close (Weighted Avg): ${prediction_data.get('ensemble_price'):,.2f}
-- Predicted Direction: {prediction_data.get('predicted_direction')} (compared to today's close)
-- 7-Day Trend: {prediction_data.get('trend_7day')}
+    Args:
+        prompt:       Fully formatted prompt string to send.
+        prompt_type:  Short identifier for the prompt category (for DB storage).
+        context_data: Raw context dict used to build the prompt (stored as JSON).
 
-Instructions:
-1. Explain what the combination of technical indicators (RSI, MACD) and predictions suggests (e.g. if the market is overbought, oversold, or trending).
-2. Synthesize the findings into a clear, actionable observation for traders. Do not provide direct financial advice, rather highlight key risk factors and opportunities.
-3. At the very end of your response, specify the overall market sentiment on a new line exactly as 'SENTIMENT: BULLISH', 'SENTIMENT: BEARISH', or 'SENTIMENT: NEUTRAL'. Do not add any punctuation to this line.
-"""
-        logger.info("Requesting market insight from Gemini 1.5 Flash...")
-        
-        # Call Gemini model
-        response = model.generate_content(
-            prompt,
-            generation_config=genai.types.GenerationConfig(
+    Returns:
+        Response text from the model, or a fallback error string on failure.
+    """
+    client = init_openrouter()
+    if client is None:
+        return "AI Insights unavailable: OPENROUTER_API_KEY is not configured."
+
+    response_text = None
+    last_error    = None
+
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            logger.info(f"Calling OpenRouter [{prompt_type}] — Attempt {attempt}/{MAX_RETRIES}...")
+            completion = client.chat.completions.create(
+                model=OPENROUTER_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a professional cryptocurrency market analyst. "
+                            "Provide concise, data-driven analysis. "
+                            "Never provide direct financial advice."
+                        )
+                    },
+                    {"role": "user", "content": prompt}
+                ],
                 temperature=0.3,
-                max_output_tokens=500
+                max_tokens=600
             )
+            response_text = completion.choices[0].message.content.strip()
+            logger.info(f"OpenRouter [{prompt_type}] succeeded on attempt {attempt}.")
+            break
+
+        except RateLimitError as e:
+            wait = 2 ** attempt  # Exponential backoff: 2s, 4s, 8s
+            logger.warning(f"Rate limit hit [{prompt_type}] attempt {attempt}. Retrying in {wait}s...")
+            last_error = e
+            time.sleep(wait)
+
+        except APIError as e:
+            wait = 2 ** attempt
+            logger.error(f"API error [{prompt_type}] attempt {attempt}: {e}. Retrying in {wait}s...")
+            last_error = e
+            time.sleep(wait)
+
+        except Exception as e:
+            logger.error(f"Unexpected error calling OpenRouter [{prompt_type}]: {e}")
+            last_error = e
+            break
+
+    if response_text is None:
+        response_text = f"AI Insight generation failed after {MAX_RETRIES} attempts: {last_error}"
+        logger.error(response_text)
+    else:
+        # Persist to Supabase gemini_insights table
+        try:
+            insert_gemini_insight({
+                "prompt_type":   prompt_type,
+                "response_text": response_text,
+                "context_json":  context_data
+            })
+        except Exception as db_err:
+            logger.warning(f"Failed to persist AI insight to Supabase: {db_err}")
+
+    return response_text
+
+
+# ─── 1. Market Summary ─────────────────────────────────────────────────────────
+def generate_market_summary(latest_data: dict) -> str:
+    """
+    Summarize current BTC market conditions from OHLCV + technical indicators.
+
+    Args:
+        latest_data: Dict with OHLCV + indicator fields from add_technical_indicators().
+
+    Returns:
+        Market summary as a formatted string.
+    """
+    prompt = MARKET_SUMMARY_PROMPT.format(
+        date        = latest_data.get("date",         "N/A"),
+        open        = float(latest_data.get("open",        0)),
+        high        = float(latest_data.get("high",        0)),
+        low         = float(latest_data.get("low",         0)),
+        close       = float(latest_data.get("close",       0)),
+        volume      = float(latest_data.get("volume",      0)),
+        sma_7       = float(latest_data.get("sma_7",       0)),
+        sma_21      = float(latest_data.get("sma_21",      0)),
+        ema_12      = float(latest_data.get("ema_12",      0)),
+        ema_26      = float(latest_data.get("ema_26",      0)),
+        rsi_14      = float(latest_data.get("rsi_14",      50)),
+        macd        = float(latest_data.get("macd",        0)),
+        macd_signal = float(latest_data.get("macd_signal", 0)),
+        bb_upper    = float(latest_data.get("bb_upper",    0)),
+        bb_lower    = float(latest_data.get("bb_lower",    0)),
+        daily_return = float(latest_data.get("daily_return", 0)),
+        volatility  = float(latest_data.get("volatility", 0))
+    )
+    return _call_openrouter(prompt, "market_summary", latest_data)
+
+
+# ─── 2. Prediction Explanation ─────────────────────────────────────────────────
+def generate_prediction_explanation(predictions: dict) -> str:
+    """
+    Explain in plain language what the ML models predict and why.
+
+    Args:
+        predictions: Dict returned by prediction_service.generate_predictions().
+
+    Returns:
+        Explanation as a formatted string.
+    """
+    latest_close  = float(predictions.get("latest_close",  0) or 0)
+    ensemble_price = float(predictions.get("ensemble_price", latest_close) or latest_close)
+    pct_change    = ((ensemble_price - latest_close) / latest_close * 100) if latest_close else 0
+
+    prompt = PREDICTION_EXPLANATION_PROMPT.format(
+        prediction_date = predictions.get("prediction_date", "N/A"),
+        prophet_price   = float(predictions.get("prophet_price",  0) or 0),
+        lstm_price      = float(predictions.get("lstm_price",     0) or 0),
+        rf_price        = float(predictions.get("rf_price",       0) or 0),
+        ensemble_price  = ensemble_price,
+        rf_direction    = predictions.get("rf_direction", "N/A"),
+        latest_close    = latest_close,
+        pct_change      = pct_change
+    )
+    return _call_openrouter(prompt, "prediction_explanation", predictions)
+
+
+# ─── 3. Risk Analysis ──────────────────────────────────────────────────────────
+def generate_risk_analysis(predictions: dict, indicators: dict) -> str:
+    """
+    Assess Bitcoin position risk level based on volatility, RSI, MACD, and predictions.
+
+    Args:
+        predictions: Dict from prediction_service.generate_predictions().
+        indicators:  Dict of latest technical indicators (from add_technical_indicators).
+
+    Returns:
+        Risk analysis as a formatted string.
+    """
+    latest_close   = float(predictions.get("latest_close", 0) or 0)
+    ensemble_price = float(predictions.get("ensemble_price", latest_close) or latest_close)
+    pct_change     = ((ensemble_price - latest_close) / latest_close * 100) if latest_close else 0
+
+    prompt = RISK_ANALYSIS_PROMPT.format(
+        rsi_14        = float(indicators.get("rsi_14",       50)),
+        macd          = float(indicators.get("macd",          0)),
+        macd_signal   = float(indicators.get("macd_signal",   0)),
+        volatility    = float(indicators.get("volatility",    0)),
+        daily_return  = float(indicators.get("daily_return",  0)),
+        bb_upper      = float(indicators.get("bb_upper",      0)),
+        bb_lower      = float(indicators.get("bb_lower",      0)),
+        close         = float(indicators.get("close",         0)),
+        ensemble_price = ensemble_price,
+        rf_direction  = predictions.get("rf_direction", "N/A"),
+        pct_change    = pct_change
+    )
+    return _call_openrouter(prompt, "risk_analysis", {**predictions, **indicators})
+
+
+# ─── 4. 7-Day Outlook ──────────────────────────────────────────────────────────
+def generate_7day_outlook(prophet_forecast: dict, current_price: float) -> str:
+    """
+    Generate a narrative 7-day Bitcoin outlook from the Prophet forecast DataFrame.
+
+    Args:
+        prophet_forecast: Dict with key 'prophet_7day' → pd.DataFrame
+                          (columns: date, yhat, yhat_lower, yhat_upper).
+        current_price:    Today's close price as float.
+
+    Returns:
+        7-day outlook narrative as a formatted string.
+    """
+    forecast_df = prophet_forecast.get("prophet_7day", pd.DataFrame())
+    if forecast_df.empty:
+        return "7-Day Outlook unavailable: Prophet forecast data is missing."
+
+    # Build forecast table string for the prompt
+    rows = []
+    for _, row in forecast_df.iterrows():
+        rows.append(
+            f"  {row['date']}: ${row['yhat']:,.2f} "
+            f"(range: ${row['yhat_lower']:,.2f} – ${row['yhat_upper']:,.2f})"
         )
-        
-        insight_text = response.text.strip()
-        
-        # Parse sentiment from the final lines
-        sentiment_score = "NEUTRAL"
-        lines = insight_text.split('\n')
-        for line in reversed(lines):
-            if "SENTIMENT:" in line.upper():
-                sentiment_part = line.split(":")[-1].strip().upper()
-                if sentiment_part in ["BULLISH", "BEARISH", "NEUTRAL"]:
-                    sentiment_score = sentiment_part
-                    # Remove the sentiment line from the main insight text to keep UI clean
-                    insight_text = "\n".join([l for l in lines if l != line]).strip()
-                    break
+    forecast_table = "\n".join(rows)
 
-        logger.info(f"Successfully generated Gemini insight. Sentiment: {sentiment_score}")
-        return {
-            "insight_text": insight_text,
-            "sentiment_score": sentiment_score
-        }
+    last_row  = forecast_df.iloc[-1]
+    end_price = float(last_row["yhat"])
+    lower     = float(last_row["yhat_lower"])
+    upper     = float(last_row["yhat_upper"])
+    projected_pct = ((end_price - current_price) / current_price * 100) if current_price else 0
+    start_date    = forecast_df.iloc[0]["date"]
 
-    except Exception as e:
-        logger.error(f"Error communicating with Gemini: {e}")
-        return {
-            "insight_text": f"Error generating AI Insight: {e}",
-            "sentiment_score": "NEUTRAL"
-        }
+    prompt = SEVEN_DAY_OUTLOOK_PROMPT.format(
+        start_date     = start_date,
+        forecast_table = forecast_table,
+        current_price  = current_price,
+        projected_pct  = projected_pct,
+        end_price      = end_price,
+        lower          = lower,
+        upper          = upper
+    )
+    context = {
+        "current_price": current_price,
+        "end_price": end_price,
+        "projected_pct": projected_pct
+    }
+    return _call_openrouter(prompt, "7day_outlook", context)
+
+
+# ─── Combined Full Report ──────────────────────────────────────────────────────
+def generate_full_report(df: "pd.DataFrame", predictions: dict) -> dict:
+    """
+    Run all 4 insight generators and return a combined report dict.
+
+    Args:
+        df:          DataFrame with technical indicators (from add_technical_indicators).
+        predictions: Dict from prediction_service.generate_predictions().
+
+    Returns:
+        Dict with keys:
+          - market_summary         : str
+          - prediction_explanation : str
+          - risk_analysis          : str
+          - seven_day_outlook      : str
+    """
+    # Extract latest row as dict for indicator-based prompts
+    df_sorted   = df.sort_values("date").reset_index(drop=True)
+    latest_dict = df_sorted.iloc[-1].to_dict()
+    # Convert date to string for JSON serialization
+    if "date" in latest_dict:
+        latest_dict["date"] = str(latest_dict["date"])
+
+    current_price = float(latest_dict.get("close", 0))
+
+    logger.info("Generating full AI insight report (4 sections)...")
+
+    report = {
+        "market_summary":         generate_market_summary(latest_dict),
+        "prediction_explanation": generate_prediction_explanation(predictions),
+        "risk_analysis":          generate_risk_analysis(predictions, latest_dict),
+        "seven_day_outlook":      generate_7day_outlook(predictions, current_price)
+    }
+
+    logger.info("Full AI insight report generated successfully.")
+    return report
