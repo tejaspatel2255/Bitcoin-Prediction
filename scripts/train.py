@@ -6,44 +6,44 @@ from datetime import datetime
 # Adjust Python path to resolve app modules from root directory
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from app.core.database import SessionLocal, engine
-from app.models.db_models import HistoricalPrice
-from app.services.data_service import fetch_btc_data, add_technical_indicators
+from app.services.supabase_service import get_historical_data
+from app.services.data_service import fetch_from_yfinance, fetch_from_coingecko, merge_and_clean, add_technical_indicators
 from app.models.prophet_model import ProphetModelWrapper
 from app.models.lstm_model import LSTMModelWrapper
 from app.models.regressor_model import RegressorModelWrapper
 from app.core.logger import get_logger
+from datetime import datetime, timedelta
 
 logger = get_logger("train_pipeline")
 
 def load_training_data() -> pd.DataFrame:
     """
-    Load training data from Supabase database. If empty, fall back to fetching from yfinance.
+    Load training data from Supabase database. If empty, fall back to fetching from API.
     """
-    if engine:
-        try:
-            db = SessionLocal()
-            query = db.query(HistoricalPrice).order_by(HistoricalPrice.date.asc())
-            df_db = pd.read_sql(query.statement, db.bind)
-            db.close()
-            
-            if not df_db.empty and len(df_db) > 100:
-                logger.info(f"Loaded {len(df_db)} records from Supabase database for training.")
-                # Map db columns to expected data loader columns
-                df_db = df_db.rename(columns={
-                    "close_price": "close",
-                    "open_price": "open",
-                    "high_price": "high",
-                    "low_price": "low"
-                })
-                return df_db
-        except Exception as e:
-            logger.error(f"Failed to load data from database: {e}. Falling back to yfinance...")
+    logger.info("Loading training data from Supabase database...")
+    try:
+        # Load up to 3 years of data (approx 1095 days)
+        df_db = get_historical_data(days=1095)
+        if not df_db.empty and len(df_db) > 100:
+            logger.info(f"Loaded {len(df_db)} records from Supabase database for training.")
+            df_indicators = add_technical_indicators(df_db)
+            return df_indicators
+    except Exception as e:
+        logger.error(f"Failed to load data from database: {e}. Falling back to API...")
 
-    # Fallback to yfinance directly
-    logger.info("Fetching training data directly from yfinance...")
-    raw_df = fetch_btc_data(period="2y")
-    df_indicators = add_technical_indicators(raw_df)
+    # Fallback to fetching directly from API
+    logger.info("Database empty or insufficient. Fetching training data directly from APIs...")
+    end_date = datetime.now()
+    start_date = end_date - timedelta(days=3 * 365)
+    
+    try:
+        raw_df = fetch_from_yfinance(start_date.strftime("%Y-%m-%d"), end_date.strftime("%Y-%m-%d"))
+    except Exception as yf_err:
+        logger.warning(f"yfinance fetch failed: {yf_err}. Using CoinGecko fallback...")
+        raw_df = fetch_from_coingecko(days=1095)
+        
+    df_cleaned = merge_and_clean(raw_df)
+    df_indicators = add_technical_indicators(df_cleaned)
     return df_indicators
 
 def main():

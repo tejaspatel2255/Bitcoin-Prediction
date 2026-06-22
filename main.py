@@ -11,6 +11,8 @@ from app.api.predictions import router as predictions_router
 from app.api.insights import router as insights_router
 from app.api.dashboard import router as dashboard_router
 
+from app.services.data_service import start_data_scheduler
+
 logger = get_logger("main")
 
 @asynccontextmanager
@@ -18,6 +20,8 @@ async def lifespan(app: FastAPI):
     """Handle application startup and shutdown using modern lifespan pattern."""
     # --- Startup ---
     logger.info("Starting up Bitcoin Prediction API backend...")
+    
+    # Initialize SQLAlchemy database if configured
     if engine:
         try:
             Base.metadata.create_all(bind=engine)
@@ -26,11 +30,19 @@ async def lifespan(app: FastAPI):
             logger.error(f"Failed to initialize database tables: {e}")
     else:
         logger.warning("Database engine is not initialized. Skipping database startup checks.")
+        
+    # Start the APScheduler background job scheduler
+    scheduler = start_data_scheduler()
 
     yield  # Application runs here
 
     # --- Shutdown ---
     logger.info("Shutting down Bitcoin Prediction API backend...")
+    try:
+        scheduler.shutdown()
+        logger.info("APScheduler shut down successfully.")
+    except Exception as e:
+        logger.error(f"Error shutting down APScheduler: {e}")
 
 # Initialize FastAPI App with lifespan
 app = FastAPI(
