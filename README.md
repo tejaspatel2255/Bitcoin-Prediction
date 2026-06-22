@@ -1,219 +1,165 @@
-# 🪙 Bitcoin Prediction App
+# 🪙 Bitcoin Prediction & AI Insight App
 
-> A full-stack, production-quality Bitcoin price forecasting application powered by an **ensemble ML pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **OpenRouter AI (Gemini 1.5 Flash)** for automated market reports, and a **Streamlit** dashboard for visualization.
-
----
-
-## 📸 Tech Stack
-
-| Layer | Technology |
-|---|---|
-| **Backend API** | FastAPI + Uvicorn |
-| **Frontend Dashboard** | Streamlit + Plotly |
-| **ML Models** | Prophet · LSTM (TensorFlow CPU) · Random Forest (scikit-learn) |
-| **AI Insights** | OpenRouter AI (google/gemini-flash-1.5) |
-| **Database** | Supabase (PostgreSQL) |
-| **Data Sources** | yfinance (historical) · CoinGecko (fallback/live price) |
-| **Config & Validation** | Pydantic v2 + pydantic-settings |
-| **Python Version** | 3.11 (required) |
+> A full-stack, enterprise-grade Bitcoin price forecasting and market intelligence platform powered by an **ensemble Machine Learning pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **OpenRouter AI (Gemini 1.5 Flash)** for automated market reports, and an interactive **Streamlit** dashboard.
 
 ---
 
-## 📂 Project Structure
+## 📸 Architecture Diagram
 
 ```text
-bitcoin-prediction/
-├── app/
-│   ├── api/                  # FastAPI route handlers
-│   │   ├── dashboard.py      # GET /api/dashboard/ — consolidated frontend data
-│   │   ├── historical.py     # GET /api/historical/ — price & indicator history
-│   │   ├── insights.py       # GET/POST /api/insights/ — OpenRouter AI market reports
-│   │   └── predictions.py    # GET/POST /api/predictions/ — ML forecast results
-│   ├── core/                 # App infrastructure
-│   │   ├── config.py         # Pydantic BaseSettings (loads .env)
-│   │   ├── database.py       # SQLAlchemy engine + session factory
-│   │   └── logger.py         # Structured logger (dev + JSON production mode)
-│   ├── models/               # Data layer
-│   │   ├── db_models.py      # legacy SQLAlchemy ORM table definitions
-│   │   ├── lstm_model.py     # CPU-only TensorFlow LSTM wrapper
-│   │   ├── prophet_model.py  # Facebook Prophet model wrapper
-│   │   └── rf_model.py       # scikit-learn Random Forest wrapper
-│   ├── schemas/              # Pydantic v2 request/response schemas
-│   │   ├── __init__.py
-│   │   └── schemas.py
-│   └── services/             # Business logic layer
-│       ├── data_service.py   # yfinance fetch, RSI/MACD, ML feature prep
-│       ├── gemini_service.py # OpenRouter AI market insight generator
-│       └── prediction_service.py # Ensemble inference + Supabase persistence
-├── streamlit_app/
-│   ├── Home.py               # Streamlit entry point landing page
-│   ├── utils.py              # API utilities & custom CSS styles
-│   └── pages/                # Multi-page dashboard pages
-
-├── scripts/
-│   ├── seed_data.py          # Seeding 3 years of data + indicators into Supabase
-│   ├── setup_db.py           # Database connection & health checks
-│   ├── train.py              # Full model training pipeline (all 3 models)
-│   └── setup_db.sql          # Raw SQL schema for manual Supabase setup
-├── data/
-│   └── saved_models/         # Trained model artifacts (.keras, .pkl) — gitignored
-├── .env.example              # Environment variable template (safe to commit)
-├── .gitignore                # Excludes venv, .env, model binaries, OS files
-├── main.py                   # FastAPI application entry point
-├── requirements.txt          # Pinned Python dependencies
-└── README.md
+                                 +------------------------+
+                                 |  yfinance / CoinGecko  |
+                                 +-----------+------------+
+                                             |
+                                             v  (Data Ingestion)
+                                 +-----------+------------+
+                                 |  scripts/seed_data.py  |
+                                 +-----------+------------+
+                                             |
+                                             v  (Upsert Records)
+                                 +-----------+------------+
+                                 |  Supabase (PostgreSQL) | <--------------------+
+                                 +-----------+------------+                      |
+                                             |                                   |
+                         +-------------------+-------------------+               |
+                         |                                       |               |
+                         v  (Historical Data)                    v  (Insight Logs|
+            +------------+------------+            +------------+------------+   |
+            |     scripts/train.py    |            |   gemini_service.py     |   |
+            +------------+------------+            +------------+------------+   |
+                         |                                       ^               |
+                         v  (Saves Model Binary)                 |  (Prompts)    |
+            +------------+------------+                          |               |
+            |   data/saved_models/    |             +------------+------------+  |
+            |   Prophet / LSTM / RF   |             |   OpenRouter API        |  |
+            +------------+------------+             |   (Gemini Flash 1.5)    |  |
+                         |                          +-------------------------+  |
+                         v  (Ensemble Forecast)                                  |
+            +------------+------------+                                          |
+            |  prediction_service.py  +------------------------------------------+
+            +------------+------------+
+                         |
+                         v  (Reads Data / Forecasts)
+            +------------+------------+
+            |  FastAPI Backend (API)  |
+            +------------+------------+
+                         ^
+                         |  (JSON Endpoints)
+            +------------+------------+
+            |    Streamlit Dashboard  |
+            +-------------------------+
 ```
 
 ---
 
-## ⚙️ Environment Setup
+## 🛠️ Tech Stack & Requirements
 
-> **Python 3.11 is required.** Python 3.12+ is not compatible with `tensorflow-cpu==2.16.1`.
+*   **Python Version:** `3.11` (strictly required; TensorFlow CPU pins fail on 3.12+).
+*   **Backend framework:** `FastAPI` (REST endpoints, Lifespan loading, background scheduler).
+*   **Frontend dashboard:** `Streamlit` (Interactive multi-page charts, Plotly indicators).
+*   **Ensemble ML:** `Prophet` (7-day trend), `scikit-learn` (Random Forest, 60% weight), `TensorFlow CPU` (LSTM sequence neural net, 40% weight).
+*   **Database:** `Supabase` PostgreSQL (saves historical data, forecasts, insights, evaluation metrics).
+*   **AI Insight Engine:** `OpenRouter API` (OpenAI-compatible python SDK utilizing `google/gemini-flash-1.5` free tier).
 
-### 1. Create Virtual Environment with Python 3.11
+---
 
-```powershell
-# Windows (PowerShell)
-py -3.11 -m venv venv
-venv\Scripts\Activate.ps1
-```
+## ⚙️ Step-by-Step Setup Guide
+
+### 1. Virtual Environment Setup
+Ensure you have Python 3.11 installed. Create and activate a virtual environment:
 
 ```bash
+# Windows
+py -3.11 -m venv venv
+venv\Scripts\Activate.ps1
+
 # macOS / Linux
 python3.11 -m venv venv
 source venv/bin/activate
 ```
 
-### 2. Install Dependencies
-
+### 2. Install Dependencies & Build Tools
+Install required packages and pins:
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-### 3. Configure Environment Variables
+### 3. Setup Supabase Tables
+1. Go to [Supabase](https://supabase.com) and create a free project.
+2. Open the **SQL Editor** in the Supabase Dashboard.
+3. Paste the contents of `scripts/setup_db.sql` and run it to create tables:
+    *   `btc_historical_data`
+    *   `predictions`
+    *   `model_metrics`
+    *   `gemini_insights`
 
+### 4. Setup OpenRouter (Gemini) Key
+1. Register for a free account at [OpenRouter](https://openrouter.ai).
+2. Go to keys page and generate an API key. This key will route to the `google/gemini-flash-1.5` free model tier.
+
+### 5. Configure Environment variables
+Create a `.env` file at the project root based on `.env.example`:
 ```bash
-cp .env.example .env   # PowerShell: Copy-Item .env.example .env
+cp .env.example .env
 ```
-
-Edit `.env` and fill in your real credentials:
-
+Fill in the credentials:
 ```env
-# Supabase — get from: https://supabase.com/dashboard/project/<your-id>/settings/api
-SUPABASE_URL=https://your-project-id.supabase.co
-SUPABASE_KEY=your-anon-public-key
-SUPABASE_DB_URL=postgresql://postgres.your-project-id:your-db-password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-
-# OpenRouter — get from: https://openrouter.ai/keys
-OPENROUTER_API_KEY=your-openrouter-api-key
+SUPABASE_URL="https://your-project-id.supabase.co"
+SUPABASE_KEY="your-anon-public-key"
+OPENROUTER_API_KEY="sk-or-v1-your-key-here"
 ```
-
-### 4. Set Up Database Schema (Supabase)
-
-Run the SQL in `scripts/setup_db.sql` in the **Supabase SQL Editor** to create the required tables (`btc_historical_data`, `predictions`, `model_metrics`, `gemini_insights`).
 
 ---
 
-## 🚀 Running the Application
+## 📡 Environment Variables Reference
 
-### Step 1 — Seed Historical BTC Data
-Fetches 3 years of daily Bitcoin OHLCV data + computes indicators and inserts them into Supabase:
-```bash
-venv\Scripts\python.exe scripts/seed_data.py
-```
-
-### Step 2 — Train ML Models
-Trains Prophet, LSTM, and Random Forest models and saves weights to `data/saved_models/`:
-```bash
-venv\Scripts\python.exe scripts/train.py
-```
-> ⏱️ This takes ~10–20 minutes on CPU depending on your hardware.
-
-### Step 3 — Start the FastAPI Backend
-```bash
-venv\Scripts\python.exe main.py
-```
-- API is live at: **http://127.0.0.1:8000**
-- Interactive Swagger docs: **http://127.0.0.1:8000/docs**
-
-### Step 4 — Start the Streamlit Dashboard
-```bash
-venv\Scripts\streamlit.exe run streamlit_app/Home.py
-```
-- Dashboard is live at: **http://localhost:8501**
-
-
----
-
-## 📡 API Endpoints
-
-| Method | Endpoint | Description |
+| Variable | Scope | Purpose |
 |---|---|---|
-| `GET` | `/` | Health check |
-| `GET` | `/api/dashboard/` | Consolidated latest price + prediction + insight |
-| `GET` | `/api/historical/?limit=100` | Historical OHLCV + indicators |
-| `GET` | `/api/predictions/?limit=30` | Historical prediction records |
-| `POST` | `/api/predictions/trigger` | Manually trigger the prediction pipeline |
-| `GET` | `/api/insights/?limit=10` | Historical AI insight reports |
-| `POST` | `/api/insights/trigger` | Generate a fresh OpenRouter AI market insight |
+| `SUPABASE_URL` | Supabase API | The web endpoint for your Supabase project instance |
+| `SUPABASE_KEY` | Supabase API | The anonymous API key for executing SELECT/INSERT commands |
+| `OPENROUTER_API_KEY` | AI insights | The API token used to request predictions and analysis reports |
+| `PORT` | API Port | Port number to bind FastAPI to (defaults to `8000`) |
 
 ---
 
-## 🧠 ML Model Architecture
+## 🚀 How to Run the Full App
 
-### Ensemble Strategy
-Final prediction is a **weighted average** of models:
+Using the provided **Makefile** (on Windows or UNIX shell):
 
-| Model | Weight | Strength |
-|---|---|---|
-| **LSTM** (TensorFlow CPU) | 40% | Sequential pattern recognition from 60-day lookback window |
-| **Random Forest** (scikit-learn) | 60% | Supervised regression on lag features + technical indicators |
+### Step 1: Seed Historical Data
+Fetches 3 years of daily Bitcoin prices and technical indicators (RSI, MACD, Bollinger Bands) and loads them into Supabase.
+```bash
+make seed
+```
 
-*Note: Prophet (Facebook) runs in parallel to generate the long-term 7-day trend narrative, but is excluded from the next-day price ensemble for maximum accuracy.*
+### Step 2: Train All Models
+Fits Prophet, LSTM, and Random Forest models on local CPU and saves binary weights into `data/saved_models/`.
+```bash
+make train
+```
 
-### Features Used
-- **OHLCV**: Open, High, Low, Close, Volume
-- **RSI (14-period)**: Momentum indicator
-- **MACD + Signal**: Trend-following indicator
-- **SMA (7, 21, 50 day)**: Moving averages
-- **EMA (12, 26 day)**: Exponential moving averages
-- **Bollinger Bands**: Volatility bands
-- **Lag features**: Close/Volume/RSI lagged 1, 3, 7 days
-
----
-
-## 🔑 Credentials & Keys
-
-| Key | Where to Get It |
-|---|---|
-| `SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
-| `SUPABASE_KEY` | Supabase Dashboard → Project Settings → API → anon/public key |
-| `SUPABASE_DB_URL` | Supabase Dashboard → Project Settings → Database → Connection pooler (Transaction mode) |
-| `OPENROUTER_API_KEY` | [OpenRouter Dashboard](https://openrouter.ai/keys) |
+### Step 3: Launch Frontend & Backend Concurrently
+Launches the FastAPI backend and Streamlit dashboard in concurrent windows:
+```bash
+make run-all
+```
+*   **FastAPI Backend:** Live at `http://127.0.0.1:8000` (docs: `/docs`)
+*   **Streamlit UI Dashboard:** Live at `http://127.0.0.1:8501`
 
 ---
 
-## 🛡️ Important Notes
+## 🧪 Running Tests
 
-- **Never commit `.env`** — it is already in `.gitignore`.
-- **ML model files** (`.pkl`, `.keras`) are gitignored — they are large and regeneratable via `scripts/train.py`.
-- **TensorFlow is CPU-only** — `CUDA_VISIBLE_DEVICES=-1` is set in the LSTM wrapper to prevent any accidental GPU detection.
-- The `yfinance` library occasionally fails due to Yahoo Finance rate limits. If `ingest_data.py` fails, wait a few minutes and retry.
-
----
-
-## 📋 Phase Completion Checklist
-
-- [x] **Phase 1** — Project Setup & Environment ✅
-- [ ] **Phase 2** — Data Ingestion Pipeline
-- [ ] **Phase 3** — ML Model Training
-- [ ] **Phase 4** — FastAPI Backend
-- [ ] **Phase 5** — Streamlit Frontend
-- [ ] **Phase 6** — Deployment
+A comprehensive unit test suite has been built to validate data cleaning, technical indicators, ML model predictions, API routes, and database wrappers:
+```bash
+make test
+```
 
 ---
 
-## 📄 License
+## 🛡️ Critical Technical Guards
 
-MIT License — see [LICENSE](LICENSE) for details.
+1.  **CPU-Only Enforcement:** In `app/models/lstm_model.py`, `CUDA_VISIBLE_DEVICES` is set to `"-1"` to prevent execution thread conflicts with local GPU hardware.
+2.  **Robust Error Handling:** All database operations are wrapped in safe exception handling blocks returning standard fallback data when database credentials are not present.
+3.  **LLM Rate Limit Handling:** Insights requests to OpenRouter contain automatic exponential backoff loops (`2s`, `4s`, `8s`) for robust rate-limit handling.

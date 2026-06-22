@@ -1,8 +1,13 @@
+import sys
+import os
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from streamlit_app.utils import inject_premium_style, safe_api_get, safe_api_post, format_date_str
+
 
 st.set_page_config(
     page_title="Model Metrics | CryptoForecaster",
