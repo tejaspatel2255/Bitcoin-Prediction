@@ -7,75 +7,80 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
-from streamlit_app.utils import safe_api_get, safe_api_post
-from streamlit_app.components.sidebar import render_sidebar, start_live_clock
+from streamlit_app.utils import safe_api_get
+from streamlit_app.components.sidebar import render_sidebar
 
 st.set_page_config(
-    page_title="BTC Oracle | ML Predictions",
+    page_title="BTC Oracle | Predictions",
     page_icon="🔮",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom premium styling block
+# Inject required CSS block at the top of EVERY page
 st.markdown("""
 <style>
-/* Global dark theme */
 [data-testid="stAppViewContainer"] { background-color: #0E1117; }
-[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A33; }
-[data-testid="metric-container"] {
-    background-color: #1A1D27;
-    border: 1px solid #F7931A33;
+[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A22; }
+[data-testid="metric-container"] { background: #1A1D27; border: 1px solid #F7931A22; border-radius: 12px; padding: 16px; }
+div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.6rem; font-weight: 600; }
+.stButton > button { background: #F7931A !important; color: #000 !important; border-radius: 8px !important; font-weight: 600 !important; border: none !important; width: 100%; }
+.stButton > button:hover { background: #e8820f !important; }
+h1, h2, h3 { color: #FFFFFF !important; }
+[data-testid="stSidebar"] h1 { color: #F7931A !important; }
+.stRadio > div { flex-direction: row; gap: 8px; }
+.stRadio label { background: #1A1D27; border: 1px solid #333; border-radius: 8px; padding: 4px 14px; color: #aaa; cursor: pointer; }
+.stSelectbox > div > div { background: #1A1D27 !important; border-color: #333 !important; }
+div[data-testid="stDataFrame"] { background: #1A1D27; border-radius: 10px; }
+
+/* Custom prediction classes */
+.pred-card {
+    background: #1A1D27;
+    border: 1px solid #F7931A22;
     border-radius: 12px;
-    padding: 16px;
+    padding: 24px;
+    text-align: center;
+    min-height: 260px;
 }
-.stButton > button {
-    background-color: #F7931A;
-    color: #000;
+.direction-badge-bullish {
+    background: #4CAF50;
+    color: #FFFFFF;
+    padding: 6px 16px;
     border-radius: 8px;
     font-weight: bold;
-    border: none;
-    width: 100%;
+    display: inline-block;
+    margin-bottom: 12px;
 }
-.stButton > button:hover { background-color: #e8820f; }
-div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.8rem; font-weight: bold; }
-div[data-testid="stMetricDelta"] { font-size: 0.9rem; }
-h1, h2, h3 { color: #FFFFFF; }
-.card {
-    background: #1A1D27;
-    border: 1px solid #F7931A33;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
-}
-.badge-up { background: #00C853; color: #000; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
-.badge-down { background: #FF1744; color: #fff; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
-.insight-box {
-    background: #1A1D27;
-    border-left: 4px solid #F7931A;
+.direction-badge-bearish {
+    background: #F44336;
+    color: #FFFFFF;
+    padding: 6px 16px;
     border-radius: 8px;
-    padding: 16px 20px;
-    margin: 12px 0;
-    color: #E0E0E0;
-    line-height: 1.7;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 12px;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Render custom sidebar
-clock_placeholder = render_sidebar()
+# Render Sidebar
+render_sidebar()
 
-# Handle Fresh Prediction Trigger
-if st.button("🔮 Run Fresh Prediction"):
-    with st.spinner("Calculating ML Ensemble Forecasts..."):
+# Title
+st.title("🔮 Ensemble ML Predictions")
+
+# "Run Fresh Prediction" button
+if st.button("🔄 Run Fresh Prediction"):
+    with st.spinner("Executing forecast & ML ensemble prediction pipeline..."):
         res = safe_api_get("/api/predict/all")
         if res:
-            st.toast("✅ Predictions updated successfully!", icon="🔥")
+            st.toast("✅ Ensemble model predictions generated successfully!", icon="🔮")
+            st.rerun()
         else:
-            st.toast("⚠️ Failed to update predictions. Using cached values.", icon="⚠️")
+            st.toast("❌ Failed to trigger prediction. Check backend status.", icon="⚠️")
 
 # ─── Load Data ───
-with st.spinner("Fetching predictions data..."):
+with st.spinner("Loading predictions..."):
     next_day_data = safe_api_get("/api/predict/next-day")
     direction_data = safe_api_get("/api/predict/direction")
     prophet_data = safe_api_get("/api/predict/7-day")
@@ -126,7 +131,7 @@ if not next_day_data:
     history_list = []
     for i, d in enumerate(hist_dates):
         act_val = 65000 + (i * 250) + np.random.randn() * 600
-        pred_val = act_val + np.random.randn() * 500
+        pred_val = act_val + np.random.randn() * 400
         history_list.append({
             "prediction_date": str(d),
             "model_used": "ensemble",
@@ -137,182 +142,197 @@ if not next_day_data:
         })
     history_data = history_list
 
-# Header
-st.title("🔮 Ensemble ML Predictions")
+# Define standard Plotly Template
+template = go.layout.Template()
+template.layout = go.Layout(
+    paper_bgcolor="#0E1117",
+    plot_bgcolor="#0E1117",
+    font=dict(color="#FFFFFF", family="Inter, sans-serif"),
+    xaxis=dict(gridcolor="#1E2130", showgrid=True, zeroline=False),
+    yaxis=dict(gridcolor="#1E2130", showgrid=True, zeroline=False),
+    legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)", borderwidth=1),
+    margin=dict(l=40, r=20, t=40, b=40)
+)
 
-# ─── Top Row: 3 Big Prediction Cards ───
-p_col1, p_col2, p_col3 = st.columns(3)
+# ─── Top Row: 3 Columns ───
+col_p1, col_p2, col_p3 = st.columns(3)
 
-with p_col1:
-    ens_price = next_day_data.get("ensemble_price", 0.0)
-    low_bound = ens_price * 0.985
-    high_bound = ens_price * 1.015
+with col_p1:
+    ens_p = next_day_data.get("ensemble_price", 0.0)
+    low_b = ens_p * 0.985
+    high_b = ens_p * 1.015
     st.markdown(f"""
-    <div class="card" style="text-align: center; min-height: 250px;">
-        <h4 style="margin: 0; color: #94a3b8;">Next Day Price Target</h4>
-        <h1 style="color: #F7931A; font-size: 2.8rem; margin: 15px 0;">${ens_price:,.2f}</h1>
-        <p style="color: #94a3b8; font-size: 0.9rem;">
-            Confidence Range (95%):<br/>
-            <strong>${low_bound:,.2f} - ${high_bound:,.2f}</strong>
+    <div class="pred-card">
+        <h4 style="margin: 0 0 10px; color: #888; font-weight: 500;">Next Day Forecast</h4>
+        <h1 style="color: #F7931A; font-size: 2.5rem; margin: 15px 0;">${ens_p:,.2f}</h1>
+        <p style="color: #888; font-size: 0.9rem; margin-top: 15px;">
+            Estimated Range (95%):<br/>
+            <strong style="color: #FFF;">${low_b:,.2f} - ${high_b:,.2f}</strong>
         </p>
     </div>
     """, unsafe_allow_html=True)
 
-with p_col2:
+with col_p2:
     direction = direction_data.get("direction", "UP")
-    confidence_val = direction_data.get("confidence", 50.0)
-    badge = '<span class="badge-up">UP</span>' if direction == "UP" else '<span class="badge-down">DOWN</span>'
+    confidence = direction_data.get("confidence", 50.0)
+    
+    badge_html = '<div class="direction-badge-bullish">BULLISH</div>' if direction == "UP" else '<div class="direction-badge-bearish">BEARISH</div>'
+    gauge_color = "#4CAF50" if direction == "UP" else "#F44336"
     
     st.markdown(f"""
-    <div class="card" style="text-align: center; min-height: 250px; padding-bottom: 5px;">
-        <h4 style="margin: 0 0 10px 0; color: #94a3b8;">Movement Direction</h4>
-        <div style="font-size: 1.5rem; margin-bottom: 10px;">Signal: {badge}</div>
-    </div>
+    <div class="pred-card" style="padding-bottom: 0;">
+        <h4 style="margin: 0 0 15px; color: #888; font-weight: 500;">Directional Signal</h4>
+        {badge_html}
     """, unsafe_allow_html=True)
     
-    # Render mini gauge inside card bounds
-    fig_gauge = go.Figure(go.Indicator(
+    # Plotly gauge chart
+    fig_g = go.Figure(go.Indicator(
         mode="gauge+number",
-        value=confidence_val,
-        number=dict(suffix="%", font=dict(color="#FFFFFF", size=24)),
+        value=confidence,
+        number=dict(suffix="%", font=dict(color="#FFFFFF", size=20)),
         gauge=dict(
             axis=dict(range=[0, 100], tickcolor="#FFFFFF"),
-            bar=dict(color="#F7931A"),
+            bar=dict(color=gauge_color),
             bgcolor="#1A1D27",
             bordercolor="rgba(247, 147, 26, 0.2)",
             steps=[
-                {"range": [0, 50], "color": "#2A2D3A"},
-                {"range": [50, 100], "color": "#3A3D4A"}
+                {"range": [0, 50], "color": "#232733"},
+                {"range": [50, 100], "color": "#2D3244"}
             ]
         )
     ))
-    fig_gauge.update_layout(
+    fig_g.update_layout(
         paper_bgcolor="#1A1D27",
         plot_bgcolor="#1A1D27",
         height=130,
-        margin=dict(l=20, r=20, t=10, b=10)
+        margin=dict(l=10, r=10, t=10, b=10)
     )
-    st.plotly_chart(fig_gauge, use_container_width=True)
+    st.plotly_chart(fig_g, use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
 
-with p_col3:
+with col_p3:
     st.markdown("""
-    <div class="card" style="text-align: center; min-height: 250px; padding-bottom: 5px;">
-        <h4 style="margin: 0; color: #94a3b8;">7-Day Forecast Trend</h4>
-    </div>
+    <div class="pred-card" style="padding-bottom: 0;">
+        <h4 style="margin: 0 0 15px; color: #888; font-weight: 500;">7-Day Forecast Trend</h4>
     """, unsafe_allow_html=True)
     
-    # Render sparkline from Prophet data
+    # Sparkline from Prophet forecast
     if prophet_data and prophet_data.get("forecast"):
         p_df = pd.DataFrame(prophet_data["forecast"])
-        fig_spark = go.Figure()
-        fig_spark.add_trace(go.Scatter(
+        fig_sp = go.Figure()
+        fig_sp.add_trace(go.Scatter(
             x=p_df["date"],
             y=p_df["yhat"],
             line=dict(color="#F7931A", width=3),
             hoverinfo="none"
         ))
-        fig_spark.update_layout(
+        fig_sp.update_layout(
             paper_bgcolor="#1A1D27",
             plot_bgcolor="#1A1D27",
             xaxis=dict(visible=False),
             yaxis=dict(visible=False),
-            height=130,
-            margin=dict(l=20, r=20, t=10, b=10)
+            height=140,
+            margin=dict(l=10, r=10, t=10, b=10)
         )
-        st.plotly_chart(fig_spark, use_container_width=True)
+        st.plotly_chart(fig_sp, use_container_width=True)
+    else:
+        st.write("No Prophet data for trend line.")
+    st.markdown("</div>", unsafe_allow_html=True)
 
-# ─── Ensemble Breakdown Bar Chart ───
-st.markdown("### 📊 Ensemble Model Breakdown")
-lst_p = next_day_data.get("lstm_price", 0.0)
+# ─── Ensemble Breakdown Chart ───
+st.markdown("### 📊 Ensemble Model Price Forecasts")
+lstm_p = next_day_data.get("lstm_price", 0.0)
 rf_p = next_day_data.get("rf_price", 0.0)
 
-fig_breakdown = go.Figure()
-fig_breakdown.add_trace(go.Bar(
-    x=["LSTM Neural Network (40%)", "Random Forest Lags (60%)", "Ensemble Consensus"],
-    y=[lst_p, rf_p, ens_price],
-    marker_color=["#00E5FF", "#FFEB3B", "#F7931A"],
-    text=[f"${lst_p:,.2f}", f"${rf_p:,.2f}", f"${ens_price:,.2f}"],
+fig_break = go.Figure()
+fig_break.add_trace(go.Bar(
+    y=["LSTM neural net", "Random Forest lags", "Ensemble consensus"],
+    x=[lstm_p, rf_p, ens_p],
+    orientation="h",
+    marker_color="#F7931A",
+    text=[f"${lstm_p:,.2f}", f"${rf_p:,.2f}", f"${ens_p:,.2f}"],
     textposition="auto"
 ))
-fig_breakdown.update_layout(
-    paper_bgcolor="#0E1117",
-    plot_bgcolor="#0E1117",
-    font=dict(color="#FFFFFF"),
-    xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-    yaxis=dict(gridcolor="#2A2D3A", showgrid=True, range=[min(lst_p, rf_p) * 0.95, max(lst_p, rf_p) * 1.05]),
-    legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
-    margin=dict(l=20, r=20, t=40, b=20),
-    height=320
+fig_break.update_layout(
+    template=template,
+    xaxis=dict(gridcolor="#1E2130", showgrid=True, title="Predicted price ($)", range=[min(lstm_p, rf_p, ens_p)*0.98, max(lstm_p, rf_p, ens_p)*1.02]),
+    yaxis=dict(gridcolor="#1E2130", showgrid=False),
+    height=250,
+    margin=dict(l=40, r=20, t=20, b=40)
 )
-st.plotly_chart(fig_breakdown, use_container_width=True)
+st.plotly_chart(fig_break, use_container_width=True)
 
-# ─── 7-Day Prophet Forecast Chart ───
+# ─── Prophet 7-Day Shaded Chart ───
 st.markdown("### 📈 7-Day Shaded Projections (Prophet)")
 if prophet_data and prophet_data.get("forecast"):
     p_df = pd.DataFrame(prophet_data["forecast"])
     p_df["date"] = pd.to_datetime(p_df["date"])
     
-    fig_prophet = go.Figure()
+    fig_pr = go.Figure()
     
-    # Shaded confidence band (orange fill, 20% opacity)
-    fig_prophet.add_trace(go.Scatter(
+    # Shaded confidence band (opacity 0.15)
+    fig_pr.add_trace(go.Scatter(
         x=pd.concat([p_df['date'], p_df['date'][::-1]]),
         y=pd.concat([p_df['yhat_upper'], p_df['yhat_lower'][::-1]]),
         fill='toself',
-        fillcolor='rgba(247, 147, 26, 0.20)',
+        fillcolor='rgba(247, 147, 26, 0.15)',
         line=dict(color='rgba(255,255,255,0)'),
-        name='Confidence Band'
+        name='Confidence Range'
     ))
     
-    # Projected line
-    fig_prophet.add_trace(go.Scatter(
+    # Forecast line
+    fig_pr.add_trace(go.Scatter(
         x=p_df['date'],
         y=p_df['yhat'],
-        name='Trend Line',
-        line=dict(color='#F7931A', width=3)
+        name='Forecast',
+        line=dict(color='#F7931A', width=2.5)
     ))
     
     # Upper/Lower dashed lines
-    fig_prophet.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_upper'], name='Upper Bound', line=dict(color='#F7931A', width=1, dash='dash')))
-    fig_prophet.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_lower'], name='Lower Bound', line=dict(color='#F7931A', width=1, dash='dash')))
+    fig_pr.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_upper'], name='Upper Limit', line=dict(color='#F7931A', width=1, dash='dash')))
+    fig_pr.add_trace(go.Scatter(x=p_df['date'], y=p_df['yhat_lower'], name='Lower Limit', line=dict(color='#F7931A', width=1, dash='dash')))
     
-    # Dotted line marking today (today is start of prediction)
-    fig_prophet.add_vline(x=p_df['date'].min(), line_width=1.5, line_dash="dot", line_color="#FFFFFF")
+    # Today line
+    fig_pr.add_vline(x=p_df['date'].min(), line_width=1.5, line_dash="dash", line_color="#FFFFFF")
     
-    fig_prophet.update_layout(
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
-        font=dict(color="#FFFFFF"),
-        xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-        yaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-        legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=380
+    fig_pr.update_layout(
+        template=template,
+        height=300,
+        margin=dict(l=40, r=20, t=20, b=40)
     )
-    st.plotly_chart(fig_prophet, use_container_width=True)
+    st.plotly_chart(fig_pr, use_container_width=True)
 
-# ─── Prediction History Table ───
-st.markdown("### 📋 Prediction Accuracy Logs")
+# ─── Prediction History Table with Conditional Styling ───
+st.markdown("### 📋 Prediction History Logs")
 if history_data:
     h_df = pd.DataFrame(history_data)
     h_df["prediction_date"] = pd.to_datetime(h_df["prediction_date"]).dt.date
     h_df = h_df.sort_values("prediction_date", ascending=False)
     
-    # Compute accuracy percentage column: 100 - absolute percentage error
-    h_df["accuracy_pct"] = 100 - (abs(h_df["predicted_value"] - h_df["actual_value"]) / h_df["actual_value"] * 100)
-    h_df["accuracy_pct"] = h_df["accuracy_pct"].clip(lower=0.0, upper=100.0)
+    # Calculate Error %
+    h_df["error_pct"] = (abs(h_df["predicted_value"] - h_df["actual_value"]) / h_df["actual_value"]) * 100
     
-    # Custom display df
-    display_df = pd.DataFrame({
+    df_display = pd.DataFrame({
         "Date": h_df["prediction_date"],
-        "Model Type": h_df["model_used"].str.upper(),
-        "Predicted Target": h_df["predicted_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
-        "Actual Price": h_df["actual_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
-        "Accuracy Index": h_df["accuracy_pct"].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "N/A"),
-        "Confidence Score": h_df["confidence_score"].map(lambda x: f"{x * 100:.1f}%" if pd.notnull(x) else "N/A")
+        "Model": h_df["model_used"].str.upper(),
+        "Predicted": h_df["predicted_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
+        "Actual": h_df["actual_value"].map(lambda x: f"${x:,.2f}" if pd.notnull(x) else "N/A"),
+        "Error %": h_df["error_pct"].map(lambda x: f"{x:.2f}%" if pd.notnull(x) else "N/A")
     })
     
-    st.dataframe(display_df, use_container_width=True, hide_index=True)
-
-# Update clock
-start_live_clock(clock_placeholder)
+    # Function to apply conditional row formatting
+    def style_rows(row):
+        try:
+            err_val = float(row["Error %"].replace("%", "").strip())
+            if err_val <= 2.0:
+                return ["color: #4CAF50; font-weight: bold;"] * len(row)
+            elif err_val >= 5.0:
+                return ["color: #F44336; font-weight: bold;"] * len(row)
+        except Exception:
+            pass
+        return ["color: #E0E0E0;"] * len(row)
+        
+    styled_table = df_display.style.apply(style_rows, axis=1)
+    st.dataframe(styled_table, use_container_width=True, hide_index=True)
+else:
+    st.info("No prediction history available yet.")

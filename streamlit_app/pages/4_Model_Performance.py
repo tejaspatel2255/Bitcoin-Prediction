@@ -6,8 +6,10 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+from datetime import datetime, timedelta
+import time
 from streamlit_app.utils import safe_api_get, safe_api_post
-from streamlit_app.components.sidebar import render_sidebar, start_live_clock
+from streamlit_app.components.sidebar import render_sidebar
 
 st.set_page_config(
     page_title="BTC Oracle | Model Performance",
@@ -16,56 +18,45 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom premium styling block
+# Inject required CSS block at the top of EVERY page
 st.markdown("""
 <style>
-/* Global dark theme */
 [data-testid="stAppViewContainer"] { background-color: #0E1117; }
-[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A33; }
-[data-testid="metric-container"] {
-    background-color: #1A1D27;
-    border: 1px solid #F7931A33;
-    border-radius: 12px;
-    padding: 16px;
-}
-.stButton > button {
-    background-color: #F7931A;
-    color: #000;
-    border-radius: 8px;
-    font-weight: bold;
-    border: none;
-    width: 100%;
-}
-.stButton > button:hover { background-color: #e8820f; }
-div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.8rem; font-weight: bold; }
-div[data-testid="stMetricDelta"] { font-size: 0.9rem; }
-h1, h2, h3 { color: #FFFFFF; }
-.card {
-    background: #1A1D27;
-    border: 1px solid #F7931A33;
-    border-radius: 12px;
-    padding: 20px;
-    margin-bottom: 16px;
-}
-.badge-up { background: #00C853; color: #000; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
-.badge-down { background: #FF1744; color: #fff; padding: 4px 10px; border-radius: 20px; font-weight: bold; }
-.insight-box {
-    background: #1A1D27;
-    border-left: 4px solid #F7931A;
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin: 12px 0;
-    color: #E0E0E0;
-    line-height: 1.7;
+[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A22; }
+[data-testid="metric-container"] { background: #1A1D27; border: 1px solid #F7931A22; border-radius: 12px; padding: 16px; }
+div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.6rem; font-weight: 600; }
+.stButton > button { background: #F7931A !important; color: #000 !important; border-radius: 8px !important; font-weight: 600 !important; border: none !important; width: 100%; }
+.stButton > button:hover { background: #e8820f !important; }
+h1, h2, h3 { color: #FFFFFF !important; }
+[data-testid="stSidebar"] h1 { color: #F7931A !important; }
+.stRadio > div { flex-direction: row; gap: 8px; }
+.stRadio label { background: #1A1D27; border: 1px solid #333; border-radius: 8px; padding: 4px 14px; color: #aaa; cursor: pointer; }
+.stSelectbox > div > div { background: #1A1D27 !important; border-color: #333 !important; }
+div[data-testid="stDataFrame"] { background: #1A1D27; border-radius: 10px; }
+
+/* Custom Badge style */
+.model-badge-active {
+    background-color: #4CAF50;
+    color: #FFFFFF;
+    padding: 3px 10px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.8rem;
+    margin-left: 10px;
+    vertical-align: middle;
+    display: inline-block;
 }
 </style>
 """, unsafe_allow_html=True)
 
-# Render custom sidebar
-clock_placeholder = render_sidebar()
+# Render Sidebar
+render_sidebar()
+
+# Title
+st.title("⚙️ Model Performance & Diagnostics")
 
 # ─── Load Metrics and Status ───
-with st.spinner("Fetching model diagnostic data..."):
+with st.spinner("Loading metrics..."):
     metrics_list = safe_api_get("/api/models/metrics?limit=30")
     model_status = safe_api_get("/api/models/status")
 
@@ -73,9 +64,9 @@ with st.spinner("Fetching model diagnostic data..."):
 if not metrics_list:
     st.sidebar.warning("Running in simulation mode for Model Performance.")
     metrics_list = [
-        {"model_name": "random_forest", "mae": 2534.07, "rmse": 3326.46, "mape": 3.4606, "r2": 0.8809, "evaluated_at": "2026-06-22T23:00:00Z"},
-        {"model_name": "lstm", "mae": 1899.51, "rmse": 2480.83, "mape": 2.7610, "r2": 0.9125, "evaluated_at": "2026-06-22T23:05:00Z"},
-        {"model_name": "prophet", "mae": 3795.66, "rmse": 4821.08, "mape": 5.1695, "r2": 0.7950, "evaluated_at": "2026-06-22T23:10:00Z"}
+        {"model_name": "random_forest", "mae": 2534.07, "rmse": 3326.46, "mape": 3.46, "r2": 0.88, "evaluated_at": "2026-06-22T23:00:00Z"},
+        {"model_name": "lstm", "mae": 1899.51, "rmse": 2480.83, "mape": 2.76, "r2": 0.91, "evaluated_at": "2026-06-22T23:05:00Z"},
+        {"model_name": "prophet", "mae": 3795.66, "rmse": 4821.08, "mape": 5.16, "r2": 0.79, "evaluated_at": "2026-06-22T23:10:00Z"}
     ]
     model_status = {
         "prophet": "loaded",
@@ -83,108 +74,80 @@ if not metrics_list:
         "random_forest": "loaded"
     }
 
-# Convert metrics list to DataFrame
+# Convert to DataFrame
 metrics_df = pd.DataFrame(metrics_list)
 
-# Header
-st.title("⚙️ Model Calibration & Metrics")
-
-# Retrain All Models Action
+# Retrain button with simulated progression animation
 if st.button("🔁 Retrain All Models"):
     progress_bar = st.progress(0)
     status_text = st.empty()
     
-    status_text.text("Training in progress... Starting Prophet Model...")
-    progress_bar.progress(20)
-    
-    # Trigger real or simulated delay
+    # Start API call in background or just simulate progress bar for UX
+    for pct in range(0, 101, 10):
+        status_text.text(f"Retraining models: {pct}% complete...")
+        progress_bar.progress(pct)
+        time.sleep(0.3)
+        
     res = safe_api_post("/api/models/retrain")
-    
-    progress_bar.progress(60)
-    status_text.text("Training in progress... Fitting Neural network (LSTM) and Random Forest...")
-    
-    progress_bar.progress(100)
-    status_text.text("Training Complete!")
-    
+    status_text.text("Training complete!")
     if res.get("status") == "success":
-        st.toast("✅ Models retrained successfully!", icon="🚀")
+        st.toast("✅ Models retrained & calibrated successfully!", icon="⚙️")
         st.rerun()
     else:
-        st.toast("⚠️ Models retrained. Refresh to load new metrics.", icon="💡")
+        st.toast("⚠️ Models retrained. Metrics refreshed.", icon="💡")
+        st.rerun()
 
 st.markdown("<hr style='border-color: rgba(255,255,255,0.05);'/>", unsafe_allow_html=True)
 
-# ─── 3 Model Sections (Prophet | Random Forest | LSTM) ───
-models_to_show = [
-    {"key": "prophet", "title": "Prophet Trend Decomposition", "color": "#FFEB3B"},
-    {"key": "random_forest", "title": "Random Forest Ensemble Lags", "color": "#F7931A"},
-    {"key": "lstm", "title": "LSTM Recurrent Neural Network", "color": "#00E5FF"}
+# ─── 3 Columns: one per model (Prophet | Random Forest | LSTM) ───
+col_m1, col_m2, col_m3 = st.columns(3)
+
+models = [
+    {"key": "prophet", "name": "Prophet Forecast", "col": col_m1},
+    {"key": "random_forest", "name": "Random Forest Ensemble", "col": col_m2},
+    {"key": "lstm", "name": "LSTM Neural Network", "col": col_m3}
 ]
 
-for m in models_to_show:
-    status_badge = '<span class="badge-up">ACTIVE</span>' if model_status.get(m["key"]) == "loaded" else '<span class="badge-down">NOT TRAINED</span>'
-    
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 15px; margin-top: 20px; margin-bottom: 10px;">
-        <h3 style="margin: 0; color: {m['color']};">{m['title']}</h3>
-        {status_badge}
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Grab latest metrics
-    m_data = metrics_df[metrics_df["model_name"] == m["key"]]
-    if not m_data.empty:
-        latest_met = m_data.iloc[0]
-    else:
-        latest_met = {"mae": 0.0, "rmse": 0.0, "mape": 0.0, "r2": 0.0}
+for m in models:
+    with m["col"]:
+        st.markdown(f"""
+        <div style="margin-bottom: 15px;">
+            <span style="font-size: 1.3rem; font-weight: 600; color: #FFF;">{m['name']}</span>
+            <span class="model-badge-active">Active</span>
+        </div>
+        """, unsafe_allow_html=True)
         
-    met_col1, met_col2, met_col3, met_col4 = st.columns(4)
-    with met_col1:
-        st.metric(label="Mean Absolute Error (MAE)", value=f"${latest_met['mae']:,.2f}")
-    with met_col2:
-        st.metric(label="Root Mean Squared Error (RMSE)", value=f"${latest_met['rmse']:,.2f}")
-    with met_col3:
-        st.metric(label="Mean Absolute Percentage Error (MAPE)", value=f"{latest_met['mape']:.4f}%")
-    with met_col4:
-        st.metric(label="R² Score (Coefficient of Determination)", value=f"{latest_met['r2']:.4f}")
+        m_df = metrics_df[metrics_df["model_name"] == m["key"]]
+        if not m_df.empty:
+            latest = m_df.iloc[0]
+        else:
+            latest = {"mae": 0.0, "rmse": 0.0, "mape": 0.0, "r2": 0.0}
+            
+        st.metric(label="Mean Absolute Error (MAE)", value=f"${latest['mae']:,.2f}")
+        st.metric(label="Root Mean Squared Error (RMSE)", value=f"${latest['rmse']:,.2f}")
+        st.metric(label="Mean Absolute Percentage Error (MAPE)", value=f"{latest['mape']:.2f}%")
+        st.metric(label="R² Score", value=f"{latest['r2']:.3f}")
 
-# ─── Mini Bar Chart comparing metrics across models ───
-st.markdown("### 📊 Error Metrics Comparison (MAE)")
-comparison_mae = []
-comparison_models = []
-for m in models_to_show:
-    m_data = metrics_df[metrics_df["model_name"] == m["key"]]
-    if not m_data.empty:
-        comparison_mae.append(m_data.iloc[0]["mae"])
-    else:
-        comparison_mae.append(0.0)
-    comparison_models.append(m["title"])
+st.markdown("<br/>", unsafe_allow_html=True)
 
-fig_comp = go.Figure(go.Bar(
-    x=comparison_models,
-    y=comparison_mae,
-    marker_color=["#FFEB3B", "#F7931A", "#00E5FF"],
-    text=[f"${x:,.2f}" for x in comparison_mae],
-    textposition="auto"
-))
-fig_comp.update_layout(
+# Define standard Plotly Template
+template = go.layout.Template()
+template.layout = go.Layout(
     paper_bgcolor="#0E1117",
     plot_bgcolor="#0E1117",
-    font=dict(color="#FFFFFF"),
-    xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-    yaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-    legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
-    margin=dict(l=20, r=20, t=40, b=20),
-    height=300
+    font=dict(color="#FFFFFF", family="Inter, sans-serif"),
+    xaxis=dict(gridcolor="#1E2130", showgrid=True, zeroline=False),
+    yaxis=dict(gridcolor="#1E2130", showgrid=True, zeroline=False),
+    legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)", borderwidth=1),
+    margin=dict(l=40, r=20, t=40, b=40)
 )
-st.plotly_chart(fig_comp, use_container_width=True)
 
-# ─── Diagnostic Charts: Feature Importance & Actual vs Predicted ───
-diag_col1, diag_col2 = st.columns(2)
+# ─── Feature Importance & Actual vs Predicted row ───
+col_chart_l, col_chart_r = st.columns(2)
 
-with diag_col1:
-    st.markdown("### 📊 Random Forest Feature Importances")
-    # Top 15 features, Bitcoin orange bars, dark background
+with col_chart_l:
+    st.markdown("### 📊 RF Feature Importance")
+    # Top 15 features, horizontal bar chart
     features = [
         "close_lag_1", "rsi_14", "volatility",
         "close_lag_3", "macd", "volume_sma",
@@ -201,52 +164,58 @@ with diag_col1:
         marker_color="#F7931A"
     ))
     fig_feat.update_layout(
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
-        font=dict(color="#FFFFFF"),
-        xaxis=dict(gridcolor="#2A2D3A", showgrid=True, title="Relative Weight"),
-        yaxis=dict(gridcolor="#2A2D3A", showgrid=False),
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=380
+        template=template,
+        xaxis=dict(gridcolor="#1E2130", showgrid=True, title="Importance Weight"),
+        yaxis=dict(showgrid=False),
+        height=400,
+        margin=dict(l=40, r=20, t=20, b=40)
     )
     st.plotly_chart(fig_feat, use_container_width=True)
 
-with diag_col2:
-    st.markdown("### 🎯 Actual vs Predicted Close (Last 30 Days)")
-    # Actual = white line, Predicted = orange dashed line
-    dates = [(datetime.now() - timedelta(days=i)).date() for i in range(30, 0, -1)]
-    base_price = 66000.0
+with col_chart_r:
+    st.markdown("### 🎯 Actual vs Predicted Close (Last 60 Days)")
+    
+    # Generate mock actual vs predicted
+    dates = [(datetime.now() - timedelta(days=i)).date() for i in range(60, 0, -1)]
+    base_p = 66000.0
     actuals = []
-    predicteds = []
-    for i in range(30):
-        base_price = base_price + np.random.randn() * 400 + (100 if i > 15 else -50)
-        actuals.append(base_price)
-        predicteds.append(base_price + np.random.randn() * 300)
+    rf_preds = []
+    lstm_preds = []
+    p_lower = []
+    p_upper = []
+    
+    for i in range(60):
+        base_p = base_p + np.random.randn() * 400 + (100 if i > 30 else -50)
+        actuals.append(base_p)
+        rf_preds.append(base_p + np.random.randn() * 320)
+        lstm_preds.append(base_p + np.random.randn() * 250)
+        p_lower.append(base_p - 1500 - np.random.rand() * 200)
+        p_upper.append(base_p + 1500 + np.random.rand() * 200)
         
     fig_diag = go.Figure()
+    
+    # Prophet shaded band (purple shaded band)
     fig_diag.add_trace(go.Scatter(
-        x=dates,
-        y=actuals,
-        name="Actual price",
-        line=dict(color="#FFFFFF", width=2.5)
+        x=pd.concat([pd.Series(dates), pd.Series(dates)[::-1]]),
+        y=pd.concat([pd.Series(p_upper), pd.Series(p_lower)[::-1]]),
+        fill='toself',
+        fillcolor='rgba(156, 39, 176, 0.15)',
+        line=dict(color='rgba(255,255,255,0)'),
+        name='Prophet Range'
     ))
-    fig_diag.add_trace(go.Scatter(
-        x=dates,
-        y=predicteds,
-        name="Predicted price",
-        line=dict(color="#F7931A", width=2, dash="dash")
-    ))
+    
+    # Actual: white solid line
+    fig_diag.add_trace(go.Scatter(x=dates, y=actuals, name='Actual', line=dict(color='#FFFFFF', width=2)))
+    
+    # RF Predicted: orange dashed
+    fig_diag.add_trace(go.Scatter(x=dates, y=rf_preds, name='RF Predicted', line=dict(color='#F7931A', width=1.5, dash='dash')))
+    
+    # LSTM Predicted: cyan dashed
+    fig_diag.add_trace(go.Scatter(x=dates, y=lstm_preds, name='LSTM Predicted', line=dict(color='#00E5FF', width=1.5, dash='dash')))
+    
     fig_diag.update_layout(
-        paper_bgcolor="#0E1117",
-        plot_bgcolor="#0E1117",
-        font=dict(color="#FFFFFF"),
-        xaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-        yaxis=dict(gridcolor="#2A2D3A", showgrid=True),
-        legend=dict(bgcolor="#1A1D27", bordercolor="rgba(247, 147, 26, 0.2)"),
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=380
+        template=template,
+        height=300,
+        margin=dict(l=40, r=20, t=20, b=40)
     )
     st.plotly_chart(fig_diag, use_container_width=True)
-
-# Update clock
-start_live_clock(clock_placeholder)
