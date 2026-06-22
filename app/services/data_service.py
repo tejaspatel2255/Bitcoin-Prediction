@@ -3,13 +3,20 @@ import numpy as np
 import yfinance as yf
 import requests
 from datetime import datetime, timedelta
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
 from app.core.logger import get_logger
 
 logger = get_logger("data_service")
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((requests.RequestException, Exception)),
+    reraise=True
+)
 def fetch_btc_data(period: str = "2y", interval: str = "1d") -> pd.DataFrame:
     """
-    Fetch historical Bitcoin price data from yfinance.
+    Fetch historical Bitcoin price data from yfinance with retry logic.
     """
     logger.info(f"Fetching BTC-USD historical data for period={period}, interval={interval}...")
     ticker = yf.Ticker("BTC-USD")
@@ -101,9 +108,15 @@ def prepare_ml_features(df: pd.DataFrame, target_lead: int = 1) -> pd.DataFrame:
     
     return df
 
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=2, max=10),
+    retry=retry_if_exception_type((requests.RequestException, Exception)),
+    reraise=True
+)
 def fetch_coingecko_price() -> float:
     """
-    Fetch the current real-time close price of Bitcoin from CoinGecko API.
+    Fetch the current real-time close price of Bitcoin from CoinGecko API with retry.
     """
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
