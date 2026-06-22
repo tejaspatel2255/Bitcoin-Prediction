@@ -8,6 +8,13 @@ import requests
 from datetime import datetime
 from streamlit_app.utils import safe_api_get
 from streamlit_app.components.sidebar import render_sidebar
+from streamlit_app.components.html_components import (
+    render_topbar,
+    metric_card,
+    section_label,
+    insight_card,
+    model_card
+)
 
 st.set_page_config(
     page_title="BTC Oracle | Home",
@@ -16,72 +23,88 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inject required CSS block at the top of EVERY page
+# Global CSS override block for the light-card UI redesign
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background-color: #0E1117; }
-[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A22; }
-[data-testid="metric-container"] { background: #1A1D27; border: 1px solid #F7931A22; border-radius: 12px; padding: 16px; }
-div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.6rem; font-weight: 600; }
-.stButton > button { background: #F7931A !important; color: #000 !important; border-radius: 8px !important; font-weight: 600 !important; border: none !important; width: 100%; }
-.stButton > button:hover { background: #e8820f !important; }
-h1, h2, h3 { color: #FFFFFF !important; }
-[data-testid="stSidebar"] h1 { color: #F7931A !important; }
-.stRadio > div { flex-direction: row; gap: 8px; }
-.stRadio label { background: #1A1D27; border: 1px solid #333; border-radius: 8px; padding: 4px 14px; color: #aaa; cursor: pointer; }
-.stSelectbox > div > div { background: #1A1D27 !important; border-color: #333 !important; }
-div[data-testid="stDataFrame"] { background: #1A1D27; border-radius: 10px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Custom helpers */
-.hero-card {
+* { font-family: 'Inter', sans-serif !important; }
+
+[data-testid="stAppViewContainer"] {
+    background: #0F1117;
+}
+[data-testid="stSidebar"] {
     background: #1A1D27;
-    border: 1px solid #F7931A22;
-    border-radius: 12px;
-    padding: 30px;
-    text-align: center;
-    margin-bottom: 24px;
+    border-right: 1px solid #2A2D3A;
 }
-.feature-card {
-    background: #1A1D27;
-    border: 1px solid #333;
-    border-radius: 12px;
-    padding: 20px;
-    min-height: 180px;
+[data-testid="stSidebar"] * { color: #CCCCCC; }
+[data-testid="block-container"] {
+    padding: 1rem 2rem !important;
 }
-.badge-bullish {
-    background-color: #4CAF50;
-    color: #FFFFFF;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    display: inline-block;
+.stButton > button {
+    background: #F7931A !important;
+    color: #000 !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    width: 100%;
+    transition: background 0.2s;
 }
-.badge-bearish {
-    background-color: #F44336;
-    color: #FFFFFF;
-    padding: 4px 12px;
-    border-radius: 6px;
-    font-weight: 600;
-    font-size: 0.9rem;
-    display: inline-block;
+.stButton > button:hover { background: #e07d0a !important; }
+
+div[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: #1A1A1A !important;
 }
-.insight-container {
-    background: #1A1D27;
-    border-left: 4px solid #F7931A;
+div[data-testid="stMetricLabel"] {
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888 !important;
+}
+[data-testid="metric-container"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E8E8E8 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+.stRadio > div { flex-direction: row; gap: 6px; }
+.stRadio label {
+    background: #FFFFFF;
+    border: 1px solid #E0E0E0;
     border-radius: 8px;
-    padding: 16px;
-    margin: 16px 0;
+    padding: 5px 14px;
+    color: #555;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
 }
+.stRadio label[data-checked="true"] {
+    background: #1A1A1A;
+    color: #FFFFFF;
+    border-color: #1A1A1A;
+}
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #E0E0E0;
+}
+.stSpinner > div { border-top-color: #F7931A !important; }
+h1, h2, h3 { color: #FFFFFF !important; font-weight: 600 !important; }
+p, span, div { color: inherit; }
+.stMarkdown { color: #CCCCCC; }
 </style>
 """, unsafe_allow_html=True)
 
 # Render Sidebar
 render_sidebar()
 
-# Fetch Live BTC Price Info from CoinGecko
+# ─── Data Fetching ───
 @st.cache_data(ttl=300)
-def fetch_live_bitcoin_data():
+def fetch_live_market_data():
     try:
         url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true&include_market_cap=true&include_24hr_vol=true"
         res = requests.get(url, timeout=10)
@@ -95,7 +118,6 @@ def fetch_live_bitcoin_data():
             }
     except Exception:
         pass
-    # Fallback simulation values if CoinGecko rate limits us
     return {
         "price": 68450.00,
         "change_24h": 1.45,
@@ -103,86 +125,138 @@ def fetch_live_bitcoin_data():
         "volume": 28400000000.0
     }
 
-with st.spinner("Fetching live Bitcoin metrics..."):
-    live_btc = fetch_live_bitcoin_data()
-
-# 1. Hero Card
-st.markdown("""
-<div class="hero-card">
-    <div style="font-size: 70px; line-height: 1; margin-bottom: 10px;">₿</div>
-    <h1 style="margin: 0; font-size: 2.8rem; font-weight: 700; color: #FFFFFF;">BTC Oracle</h1>
-    <p style="color: #F7931A; font-size: 1.25rem; font-weight: 500; margin: 5px 0 0;">Predict. Analyze. Profit.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# 2. 4 Metric Cards Row
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    st.metric(label="BTC Price", value=f"${live_btc['price']:,.2f}")
-with col2:
-    st.metric(label="24h Change", value=f"{live_btc['change_24h']:.2f}%", delta=f"{live_btc['change_24h']:.2f}%")
-with col3:
-    st.metric(label="Market Cap", value=f"${live_btc['market_cap']/1e9:,.2f}B")
-with col4:
-    st.metric(label="Volume (24h)", value=f"${live_btc['volume']/1e9:,.2f}B")
-
-# 3. Market Status Badge
-st.markdown("### 📊 Market Status")
-if live_btc['change_24h'] >= 0:
-    st.markdown('<div class="badge-bullish">BULLISH</div>', unsafe_allow_html=True)
-else:
-    st.markdown('<div class="badge-bearish">BEARISH</div>', unsafe_allow_html=True)
-
-# 4. Last AI Insight Summary Box
-st.markdown("### 🧠 Latest AI Outlook Summary")
-
 @st.cache_data(ttl=300)
-def fetch_latest_ai_insight():
+def fetch_latest_rsi():
     try:
-        # Fetch from our FastAPI endpoint which connects to Supabase
-        insights_history = safe_api_get("/api/insights/history?limit=1")
-        if insights_history and isinstance(insights_history, list) and len(insights_history) > 0:
-            return insights_history[0].get("response_text")
+        hist = safe_api_get("/api/data/historical?days=1")
+        if hist and isinstance(hist, list) and len(hist) > 0:
+            return hist[0].get("rsi_14", 54.3)
     except Exception:
         pass
-    return "Bitcoin exhibits consolidative behavior above the 7-day simple moving average. Short-term bullish bias remains active as long as the support region holds. Technical indicators indicate low momentum but solid support structure."
+    return 54.3
 
-with st.spinner("Fetching AI narrative..."):
-    latest_insight = fetch_latest_ai_insight()
+@st.cache_data(ttl=300)
+def fetch_insights_and_accuracies():
+    insights = safe_api_get("/api/insights/full-report")
+    if not insights:
+        insights = {
+            "market_summary": "Bitcoin (BTC) is consolidating around the $68,450 support levels. Indicators are pointing to a positive bias.",
+            "risk_analysis": "The technical risk is currently assessed as MEDIUM. Support holds firm above SMA 21.",
+            "seven_day_outlook": "Prophet projections indicate a steady target peak of $71,200 with an overall BULLISH outlook."
+        }
+    
+    metrics = safe_api_get("/api/models/metrics?limit=10")
+    accuracies = {"prophet": 91.2, "random_forest": 93.8, "lstm": 94.5}
+    if metrics and isinstance(metrics, list):
+        for m in metrics:
+            m_name = m.get("model_name")
+            mape = m.get("mape", 5.0)
+            acc = round(100.0 - mape, 1)
+            accuracies[m_name] = acc
+            
+    return insights, accuracies
 
-st.markdown(f"""
-<div class="insight-container">
-    <p style="margin: 0; color: #cbd5e1; font-size: 1rem; line-height: 1.6;">{latest_insight}</p>
-</div>
-""", unsafe_allow_html=True)
+with st.spinner("Fetching market metrics..."):
+    live_data = fetch_live_market_data()
+    rsi_val = fetch_latest_rsi()
+    latest_report, model_accuracies = fetch_insights_and_accuracies()
 
-# 5. 3 Feature Cards
-st.markdown("### ⚡ Platforms & Features")
-feat1, feat2, feat3 = st.columns(3)
-with feat1:
-    st.markdown("""
-    <div class="feature-card">
-        <h3 style="color: #F7931A; margin-top: 0;">🔮 ML Predictions</h3>
-        <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.4; margin: 8px 0 0;">
-            Ensemble of 3 models (LSTM + Prophet + Random Forest) optimized for daily prediction horizons.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-with feat2:
-    st.markdown("""
-    <div class="feature-card">
-        <h3 style="color: #F7931A; margin-top: 0;">🧠 AI Insights</h3>
-        <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.4; margin: 8px 0 0;">
-            Powered by Gemini Flash via OpenRouter. Natural language reports covering sentiment, risk, and trend outlook.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
-with feat3:
-    st.markdown("""
-    <div class="feature-card">
-        <h3 style="color: #F7931A; margin-top: 0;">📊 Live Charts</h3>
-        <p style="color: #94a3b8; font-size: 0.9rem; line-height: 1.4; margin: 8px 0 0;">
-            TradingView-style interactive Plotly candlestick charting integrated with major indicator overlays.
-        </p>
-    </div>
-    """, unsafe_allow_html=True)
+# Top Bar
+render_topbar()
+
+# 4 Metric Cards
+m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+change_sign = "+" if live_data["change_24h"] >= 0 else ""
+change_color = "#4CAF50" if live_data["change_24h"] >= 0 else "#F44336"
+
+with m_col1:
+    metric_card(
+        icon="🪙",
+        label="BTC Price",
+        value=f"${live_data['price']:,.2f}",
+        delta=f"{change_sign}{live_data['change_24h']:.2f}% (24h)",
+        delta_color=change_color
+    )
+
+with m_col2:
+    metric_card(
+        icon="📊",
+        label="24h Volume",
+        value=f"${live_data['volume']/1e9:,.2f}B",
+        delta="Global trading volume",
+        delta_color="#888888"
+    )
+
+with m_col3:
+    metric_card(
+        icon="💼",
+        label="Market Cap",
+        value=f"${live_data['market_cap']/1e9:,.2f}B",
+        delta="Total circulating supply",
+        delta_color="#888888"
+    )
+
+with m_col4:
+    rsi_color = "#9C27B0" if (30 <= rsi_val <= 70) else ("#4CAF50" if rsi_val < 30 else "#F44336")
+    metric_card(
+        icon="📈",
+        label="RSI (14)",
+        value=f"{rsi_val:.2f}",
+        delta="Neutral Zone" if (30 <= rsi_val <= 70) else ("Oversold" if rsi_val < 30 else "Overbought"),
+        delta_color=rsi_color
+    )
+
+# Section Label: AI Insights
+section_label("⊕", "AI Insights")
+
+col_ins1, col_ins2, col_ins3 = st.columns(3)
+with col_ins1:
+    insight_card(
+        icon="🏪",
+        title="Market Summary",
+        text=latest_report.get("market_summary"),
+        border_color="#F7931A"
+    )
+with col_ins2:
+    insight_card(
+        icon="⚠️",
+        title="Risk Analysis",
+        text=latest_report.get("risk_analysis"),
+        border_color="#F44336"
+    )
+with col_ins3:
+    insight_card(
+        icon="📅",
+        title="7-Day Outlook",
+        text=latest_report.get("seven_day_outlook"),
+        border_color="#4CAF50"
+    )
+
+# Section Label: Model Status
+section_label("⊕", "Model Status")
+
+col_mod1, col_mod2, col_mod3 = st.columns(3)
+with col_mod1:
+    model_card(
+        icon="📈",
+        name="Prophet Model",
+        subtitle="Time-series Trend Decomposition",
+        accuracy=model_accuracies.get("prophet", 91.2),
+        acc_color="#F7931A"
+    )
+with col_mod2:
+    model_card(
+        icon="🌲",
+        name="Random Forest",
+        subtitle="Sequential Lags Classifier",
+        accuracy=model_accuracies.get("random_forest", 93.8),
+        acc_color="#4CAF50"
+    )
+with col_mod3:
+    model_card(
+        icon="🧠",
+        name="LSTM Model",
+        subtitle="Recurrent Neural Network",
+        accuracy=model_accuracies.get("lstm", 94.5),
+        acc_color="#9C27B0"
+    )

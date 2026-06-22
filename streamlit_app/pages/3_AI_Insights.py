@@ -7,6 +7,11 @@ import pandas as pd
 from datetime import datetime
 from streamlit_app.utils import safe_api_get
 from streamlit_app.components.sidebar import render_sidebar
+from streamlit_app.components.html_components import (
+    render_topbar,
+    insight_card,
+    section_label
+)
 
 st.set_page_config(
     page_title="BTC Oracle | AI Insights",
@@ -15,39 +20,84 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Inject required CSS block at the top of EVERY page
+# Global CSS override block for the light-card UI redesign
 st.markdown("""
 <style>
-[data-testid="stAppViewContainer"] { background-color: #0E1117; }
-[data-testid="stSidebar"] { background-color: #1A1D27; border-right: 1px solid #F7931A22; }
-[data-testid="metric-container"] { background: #1A1D27; border: 1px solid #F7931A22; border-radius: 12px; padding: 16px; }
-div[data-testid="stMetricValue"] { color: #F7931A; font-size: 1.6rem; font-weight: 600; }
-.stButton > button { background: #F7931A !important; color: #000 !important; border-radius: 8px !important; font-weight: 600 !important; border: none !important; width: 100%; }
-.stButton > button:hover { background: #e8820f !important; }
-h1, h2, h3 { color: #FFFFFF !important; }
-[data-testid="stSidebar"] h1 { color: #F7931A !important; }
-.stRadio > div { flex-direction: row; gap: 8px; }
-.stRadio label { background: #1A1D27; border: 1px solid #333; border-radius: 8px; padding: 4px 14px; color: #aaa; cursor: pointer; }
-.stSelectbox > div > div { background: #1A1D27 !important; border-color: #333 !important; }
-div[data-testid="stDataFrame"] { background: #1A1D27; border-radius: 10px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
-/* Custom insight box helper classes */
-.insight-card {
-    background: #1A1D27;
-    border-radius: 8px;
-    padding: 16px 20px;
-    margin-bottom: 12px;
-    color: #E0E0E0;
-    line-height: 1.6;
+* { font-family: 'Inter', sans-serif !important; }
+
+[data-testid="stAppViewContainer"] {
+    background: #0F1117;
 }
+[data-testid="stSidebar"] {
+    background: #1A1D27;
+    border-right: 1px solid #2A2D3A;
+}
+[data-testid="stSidebar"] * { color: #CCCCCC; }
+[data-testid="block-container"] {
+    padding: 1rem 2rem !important;
+}
+.stButton > button {
+    background: #F7931A !important;
+    color: #000 !important;
+    font-weight: 600 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    padding: 10px 20px !important;
+    width: 100%;
+    transition: background 0.2s;
+}
+.stButton > button:hover { background: #e07d0a !important; }
+
+div[data-testid="stMetricValue"] {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    color: #1A1A1A !important;
+}
+div[data-testid="stMetricLabel"] {
+    font-size: 11px !important;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #888 !important;
+}
+[data-testid="metric-container"] {
+    background: #FFFFFF !important;
+    border: 1px solid #E8E8E8 !important;
+    border-radius: 12px !important;
+    padding: 16px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+}
+.stRadio > div { flex-direction: row; gap: 6px; }
+.stRadio label {
+    background: #FFFFFF;
+    border: 1px solid #E0E0E0;
+    border-radius: 8px;
+    padding: 5px 14px;
+    color: #555;
+    font-size: 13px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.stRadio label[data-checked="true"] {
+    background: #1A1A1A;
+    color: #FFFFFF;
+    border-color: #1A1A1A;
+}
+div[data-testid="stDataFrame"] {
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #E0E0E0;
+}
+.stSpinner > div { border-top-color: #F7931A !important; }
+h1, h2, h3 { color: #FFFFFF !important; font-weight: 600 !important; }
+p, span, div { color: inherit; }
+.stMarkdown { color: #CCCCCC; }
 </style>
 """, unsafe_allow_html=True)
 
 # Render Sidebar
 render_sidebar()
-
-# Title
-st.title("🧠 AI Intelligence Insights")
 
 # ─── Load Latest Insights ───
 with st.spinner("Loading latest AI intelligence..."):
@@ -94,83 +144,82 @@ if not latest_report:
         }
     ]
 
-# Generate Full Report Button (Orange, full width)
-if st.button("🔄 Generate Full Report", key="full_report_gen"):
-    with st.spinner("Consulting AI & generating full consolidated report..."):
+# Top Bar
+render_topbar()
+
+# Orange full width report generation button
+if st.button("Generate Full Report"):
+    with st.spinner("Generating consolidated market insights..."):
         res = safe_api_get("/api/insights/full-report")
         if res:
-            st.toast("✅ Full AI Market Intelligence report generated!", icon="🧠")
+            st.toast("✅ Full report compiled successfully!", icon="🧠")
             st.rerun()
         else:
-            st.toast("❌ Failed to generate report. Check API credentials.", icon="⚠️")
+            st.toast("❌ Insight generator failed.", icon="⚠️")
 
-st.markdown("<br/>", unsafe_allow_html=True)
+# Section Label
+section_label("🧠", "AI Insights")
 
-# ─── Refresh Handlers ───
-def trigger_refresh_section(endpoint_name: str, display_name: str):
-    with st.spinner(f"Refreshing {display_name}..."):
-        res = safe_api_get(f"/api/insights/{endpoint_name}")
+# Helper to refresh segment
+def trigger_segment_refresh(endpoint: str, label: str):
+    with st.spinner(f"Refreshing {label}..."):
+        res = safe_api_get(f"/api/insights/{endpoint}")
         if res:
-            st.toast(f"✅ Refreshed {display_name} successfully!", icon="💡")
+            st.toast(f"✅ Refreshed {label} successfully!", icon="💡")
             st.rerun()
         else:
-            st.toast(f"❌ Failed to refresh {display_name}.", icon="⚠️")
+            st.toast(f"❌ Failed to refresh {label}.", icon="⚠️")
 
-# ─── 2x2 Grid of Insight Cards ───
-col_grid_l, col_grid_r = st.columns(2)
+# 2x2 Grid Layout
+col_g1, col_g2 = st.columns(2)
 
-with col_grid_l:
-    # Card 1: Market Summary
-    st.markdown(f"""
-    <div class="insight-card" style="border-left: 4px solid #F7931A;">
-        <h4 style="margin: 0 0 10px; color: #F7931A;">🏪 Market Summary</h4>
-        <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">{latest_report.get("market_summary")}</p>
-        <span style="display: block; font-size: 0.75rem; color: #888; margin-top: 15px;">Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("🔄 Refresh Summary", key="ref_sum"):
-        trigger_refresh_section("summary", "Market Summary")
+with col_g1:
+    # Row 1 Left: Market Summary
+    insight_card(
+        icon="🏪",
+        title="Market Summary",
+        text=latest_report.get("market_summary"),
+        border_color="#F7931A"
+    )
+    if st.button("🔄 Refresh Summary", key="ref_sum_btn"):
+        trigger_segment_refresh("summary", "Market Summary")
         
     st.markdown("<br/>", unsafe_allow_html=True)
+    
+    # Row 2 Left: Risk Analysis
+    insight_card(
+        icon="⚠️",
+        title="Risk Analysis",
+        text=latest_report.get("risk_analysis"),
+        border_color="#F44336"
+    )
+    if st.button("🔄 Refresh Risk", key="ref_risk_btn"):
+        trigger_segment_refresh("risk", "Risk Analysis")
 
-    # Card 2: Risk Analysis
-    st.markdown(f"""
-    <div class="insight-card" style="border-left: 4px solid #F44336;">
-        <h4 style="margin: 0 0 10px; color: #F44336;">⚠️ Risk Analysis</h4>
-        <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">{latest_report.get("risk_analysis")}</p>
-        <span style="display: block; font-size: 0.75rem; color: #888; margin-top: 15px;">Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("🔄 Refresh Risk Analysis", key="ref_risk"):
-        trigger_refresh_section("risk", "Risk Analysis")
-
-with col_grid_r:
-    # Card 3: Prediction Explanation
-    st.markdown(f"""
-    <div class="insight-card" style="border-left: 4px solid #60A5FA;">
-        <h4 style="margin: 0 0 10px; color: #60A5FA;">🤖 Prediction Explanation</h4>
-        <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">{latest_report.get("prediction_explanation")}</p>
-        <span style="display: block; font-size: 0.75rem; color: #888; margin-top: 15px;">Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("🔄 Refresh Explanation", key="ref_exp"):
-        trigger_refresh_section("explanation", "Prediction Explanation")
+with col_g2:
+    # Row 1 Right: Prediction Explanation
+    insight_card(
+        icon="🤖",
+        title="Prediction Explanation",
+        text=latest_report.get("prediction_explanation"),
+        border_color="#60A5FA"
+    )
+    if st.button("🔄 Refresh Explanation", key="ref_exp_btn"):
+        trigger_segment_refresh("explanation", "Prediction Explanation")
         
     st.markdown("<br/>", unsafe_allow_html=True)
+    
+    # Row 2 Right: 7-Day Outlook
+    insight_card(
+        icon="📅",
+        title="7-Day Outlook",
+        text=latest_report.get("seven_day_outlook"),
+        border_color="#4CAF50"
+    )
+    if st.button("🔄 Refresh Outlook", key="ref_out_btn"):
+        trigger_segment_refresh("full-report", "7-Day Outlook")
 
-    # Card 4: 7-Day Outlook
-    st.markdown(f"""
-    <div class="insight-card" style="border-left: 4px solid #4CAF50;">
-        <h4 style="margin: 0 0 10px; color: #4CAF50;">📅 7-Day Outlook</h4>
-        <p style="margin: 0; font-size: 0.95rem; line-height: 1.6;">{latest_report.get("seven_day_outlook")}</p>
-        <span style="display: block; font-size: 0.75rem; color: #888; margin-top: 15px;">Generated at: {datetime.now().strftime('%Y-%m-%d %H:%M UTC')}</span>
-    </div>
-    """, unsafe_allow_html=True)
-    if st.button("🔄 Refresh Outlook", key="ref_out"):
-        trigger_refresh_section("full-report", "7-Day Outlook")
-
-# ─── Past Insights Expander at Bottom ───
-st.markdown("---")
+st.markdown("<hr style='border-color: rgba(255,255,255,0.05);'/>", unsafe_allow_html=True)
 with st.expander("View history"):
     if history_data:
         h_df = pd.DataFrame(history_data)
@@ -181,4 +230,4 @@ with st.expander("View history"):
         })
         st.dataframe(h_display, use_container_width=True, hide_index=True)
     else:
-        st.info("No saved insights in the logs.")
+        st.info("No saved insights logs.")
