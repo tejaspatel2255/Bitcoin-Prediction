@@ -1,6 +1,6 @@
 # 🪙 Bitcoin Prediction App
 
-> A full-stack, production-quality Bitcoin price forecasting application powered by an **ensemble ML pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **Google Gemini 1.5 Flash** for automated market reports, and a **Streamlit** dashboard for visualization.
+> A full-stack, production-quality Bitcoin price forecasting application powered by an **ensemble ML pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **OpenRouter AI (Gemini 1.5 Flash)** for automated market reports, and a **Streamlit** dashboard for visualization.
 
 ---
 
@@ -11,9 +11,9 @@
 | **Backend API** | FastAPI + Uvicorn |
 | **Frontend Dashboard** | Streamlit + Plotly |
 | **ML Models** | Prophet · LSTM (TensorFlow CPU) · Random Forest (scikit-learn) |
-| **AI Insights** | Google Gemini 1.5 Flash |
-| **Database** | Supabase (PostgreSQL) + SQLAlchemy |
-| **Data Sources** | yfinance (historical) · CoinGecko (live price) |
+| **AI Insights** | OpenRouter AI (google/gemini-flash-1.5) |
+| **Database** | Supabase (PostgreSQL) |
+| **Data Sources** | yfinance (historical) · CoinGecko (fallback/live price) |
 | **Config & Validation** | Pydantic v2 + pydantic-settings |
 | **Python Version** | 3.11 (required) |
 
@@ -27,28 +27,29 @@ bitcoin-prediction/
 │   ├── api/                  # FastAPI route handlers
 │   │   ├── dashboard.py      # GET /api/dashboard/ — consolidated frontend data
 │   │   ├── historical.py     # GET /api/historical/ — price & indicator history
-│   │   ├── insights.py       # GET/POST /api/insights/ — Gemini AI market reports
+│   │   ├── insights.py       # GET/POST /api/insights/ — OpenRouter AI market reports
 │   │   └── predictions.py    # GET/POST /api/predictions/ — ML forecast results
 │   ├── core/                 # App infrastructure
 │   │   ├── config.py         # Pydantic BaseSettings (loads .env)
 │   │   ├── database.py       # SQLAlchemy engine + session factory
 │   │   └── logger.py         # Structured logger (dev + JSON production mode)
 │   ├── models/               # Data layer
-│   │   ├── db_models.py      # SQLAlchemy ORM table definitions
+│   │   ├── db_models.py      # legacy SQLAlchemy ORM table definitions
 │   │   ├── lstm_model.py     # CPU-only TensorFlow LSTM wrapper
 │   │   ├── prophet_model.py  # Facebook Prophet model wrapper
-│   │   └── regressor_model.py# scikit-learn Random Forest wrapper
+│   │   └── rf_model.py       # scikit-learn Random Forest wrapper
 │   ├── schemas/              # Pydantic v2 request/response schemas
 │   │   ├── __init__.py
 │   │   └── schemas.py
 │   └── services/             # Business logic layer
 │       ├── data_service.py   # yfinance fetch, RSI/MACD, ML feature prep
-│       ├── gemini_service.py # Google Gemini 1.5 Flash market insight generator
+│       ├── gemini_service.py # OpenRouter AI market insight generator
 │       └── prediction_service.py # Ensemble inference + Supabase persistence
 ├── streamlit_app/
 │   └── app.py                # Premium Streamlit frontend dashboard
 ├── scripts/
-│   ├── ingest_data.py        # One-time historical data ingestion into Supabase
+│   ├── seed_data.py          # Seeding 3 years of data + indicators into Supabase
+│   ├── setup_db.py           # Database connection & health checks
 │   ├── train.py              # Full model training pipeline (all 3 models)
 │   └── setup_db.sql          # Raw SQL schema for manual Supabase setup
 ├── data/
@@ -101,22 +102,22 @@ SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_KEY=your-anon-public-key
 SUPABASE_DB_URL=postgresql://postgres.your-project-id:your-db-password@aws-0-us-east-1.pooler.supabase.com:6543/postgres
 
-# Google Gemini — get from: https://aistudio.google.com/app/apikey
-GEMINI_API_KEY=your-gemini-api-key
+# OpenRouter — get from: https://openrouter.ai/keys
+OPENROUTER_API_KEY=your-openrouter-api-key
 ```
 
 ### 4. Set Up Database Schema (Supabase)
 
-Run the SQL in `scripts/setup_db.sql` in the **Supabase SQL Editor** to create the required tables (`historical_prices`, `predictions`, `ai_insights`).
+Run the SQL in `scripts/setup_db.sql` in the **Supabase SQL Editor** to create the required tables (`btc_historical_data`, `predictions`, `model_metrics`, `gemini_insights`).
 
 ---
 
 ## 🚀 Running the Application
 
-### Step 1 — Ingest Historical BTC Data
-Fetches 2 years of daily Bitcoin OHLCV data + computes RSI/MACD indicators and inserts them into Supabase:
+### Step 1 — Seed Historical BTC Data
+Fetches 3 years of daily Bitcoin OHLCV data + computes indicators and inserts them into Supabase:
 ```bash
-venv\Scripts\python.exe scripts/ingest_data.py
+venv\Scripts\python.exe scripts/seed_data.py
 ```
 
 ### Step 2 — Train ML Models
@@ -147,31 +148,34 @@ venv\Scripts\streamlit.exe run streamlit_app/app.py
 |---|---|---|
 | `GET` | `/` | Health check |
 | `GET` | `/api/dashboard/` | Consolidated latest price + prediction + insight |
-| `GET` | `/api/historical/?limit=100` | Historical OHLCV + RSI/MACD data |
+| `GET` | `/api/historical/?limit=100` | Historical OHLCV + indicators |
 | `GET` | `/api/predictions/?limit=30` | Historical prediction records |
 | `POST` | `/api/predictions/trigger` | Manually trigger the prediction pipeline |
 | `GET` | `/api/insights/?limit=10` | Historical AI insight reports |
-| `POST` | `/api/insights/trigger` | Generate a fresh Gemini AI market insight |
+| `POST` | `/api/insights/trigger` | Generate a fresh OpenRouter AI market insight |
 
 ---
 
 ## 🧠 ML Model Architecture
 
 ### Ensemble Strategy
-Final prediction is a **weighted average** of three independent models:
+Final prediction is a **weighted average** of models:
 
 | Model | Weight | Strength |
 |---|---|---|
-| **LSTM** (TensorFlow CPU) | 40% | Sequential pattern recognition from 30-day lookback window |
-| **Prophet** (Facebook) | 30% | Trend decomposition + seasonality (daily, weekly, yearly) |
-| **Random Forest** (scikit-learn) | 30% | Supervised regression on lag features + technical indicators |
+| **LSTM** (TensorFlow CPU) | 40% | Sequential pattern recognition from 60-day lookback window |
+| **Random Forest** (scikit-learn) | 60% | Supervised regression on lag features + technical indicators |
+
+*Note: Prophet (Facebook) runs in parallel to generate the long-term 7-day trend narrative, but is excluded from the next-day price ensemble for maximum accuracy.*
 
 ### Features Used
 - **OHLCV**: Open, High, Low, Close, Volume
 - **RSI (14-period)**: Momentum indicator
 - **MACD + Signal**: Trend-following indicator
-- **SMA (7 & 30 day)**: Moving averages
-- **Lag features**: Close/Volume/RSI lagged 1, 2, 3, 5, 7 days
+- **SMA (7, 21, 50 day)**: Moving averages
+- **EMA (12, 26 day)**: Exponential moving averages
+- **Bollinger Bands**: Volatility bands
+- **Lag features**: Close/Volume/RSI lagged 1, 3, 7 days
 
 ---
 
@@ -182,7 +186,7 @@ Final prediction is a **weighted average** of three independent models:
 | `SUPABASE_URL` | Supabase Dashboard → Project Settings → API |
 | `SUPABASE_KEY` | Supabase Dashboard → Project Settings → API → anon/public key |
 | `SUPABASE_DB_URL` | Supabase Dashboard → Project Settings → Database → Connection pooler (Transaction mode) |
-| `GEMINI_API_KEY` | [Google AI Studio](https://aistudio.google.com/app/apikey) |
+| `OPENROUTER_API_KEY` | [OpenRouter Dashboard](https://openrouter.ai/keys) |
 
 ---
 
