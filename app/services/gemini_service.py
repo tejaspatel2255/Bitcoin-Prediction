@@ -1,11 +1,11 @@
 """
 app/services/gemini_service.py — AI Insight Engine using OpenRouter API.
 
-OpenRouter is OpenAI-compatible and provides access to Google Gemini Flash 1.5
-on a generous free tier via the standard OpenAI Python SDK.
+OpenRouter is OpenAI-compatible and provides access to Google Gemini 1.5 Flash
+on the free tier via the standard OpenAI Python SDK.
 
 Base URL:  https://openrouter.ai/api/v1
-Model:     google/gemini-flash-1.5
+Model:     google/gemini-1.5-flash:free
 SDK:       openai (pip install openai>=1.0.0)
 """
 
@@ -26,7 +26,6 @@ logger = get_logger("gemini_service")
 
 # ─── OpenRouter Configuration ─────────────────────────────────────────────────
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
-OPENROUTER_MODEL    = "google/gemini-flash-1.5"
 MAX_RETRIES         = 3
 _client: OpenAI | None = None
 
@@ -56,7 +55,7 @@ def init_openrouter() -> OpenAI:
             "X-Title":      "BTC Prediction App"
         }
     )
-    logger.info(f"OpenRouter client initialized. Model: {OPENROUTER_MODEL}")
+    logger.info(f"OpenRouter client initialized. Model: {settings.GEMINI_MODEL}")
     return _client
 
 
@@ -83,9 +82,10 @@ def _call_openrouter(prompt: str, prompt_type: str, context_data: dict) -> str:
 
     for attempt in range(1, MAX_RETRIES + 1):
         try:
-            logger.info(f"Calling OpenRouter [{prompt_type}] — Attempt {attempt}/{MAX_RETRIES}...")
+            model_id = settings.GEMINI_MODEL
+            logger.info(f"Calling OpenRouter [{prompt_type}] using {model_id} — Attempt {attempt}/{MAX_RETRIES}...")
             completion = client.chat.completions.create(
-                model=OPENROUTER_MODEL,
+                model=model_id,
                 messages=[
                     {
                         "role": "system",

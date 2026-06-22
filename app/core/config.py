@@ -9,6 +9,7 @@ class Settings(BaseSettings):
 
     # OpenRouter API Configuration (OpenAI-compatible, routes to Gemini Flash 1.5 free tier)
     OPENROUTER_API_KEY: str = ""
+    GEMINI_MODEL: str = "google/gemini-1.5-flash:free"
 
     # FastAPI Settings
     API_HOST: str = "127.0.0.1"
