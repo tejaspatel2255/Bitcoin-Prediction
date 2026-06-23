@@ -1,12 +1,14 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { SkeletonComponent } from '../skeleton/skeleton.component';
 
 @Component({
   selector: 'app-metric-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SkeletonComponent],
   templateUrl: './metric-card.component.html',
-  styleUrl: './metric-card.component.scss'
+  styleUrl: './metric-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class MetricCardComponent {
   @Input() icon: string = '';
@@ -15,4 +17,11 @@ export class MetricCardComponent {
   @Input() delta: string = '';
   @Input() deltaColor: string = '#888888';
   @Input() topBorderColor: string = '';
+  @Input() isLoading: boolean = false;
+
+  private cdr = inject(ChangeDetectorRef);
+
+  markForCheck() {
+    this.cdr.markForCheck();
+  }
 }

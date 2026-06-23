@@ -3,8 +3,11 @@
   "version": "0.0.0",
   "scripts": {
     "ng": "ng",
-    "start": "ng serve",
-    "build": "ng build",
+    "start": "ng serve --port 4200 --hmr",
+    "start:fast": "ng serve --port 4200 --hmr --no-poll",
+    "build": "ng build --configuration production",
+    "build:stats": "ng build --stats-json",
+    "analyze": "webpack-bundle-analyzer dist/btc-oracle-frontend/stats.json",
     "watch": "ng build --watch --configuration development",
     "test": "ng test"
   },

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
@@ -9,7 +9,7 @@ import { PredictionService } from '../../core/services/prediction.service';
 import { lastValueFrom } from 'rxjs';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { PercentFormatPipe } from '../../shared/pipes/percent-format.pipe';
-import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../core/chart-config';
+import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN } from '../../core/chart-config';
 
 @Component({
   selector: 'app-model-performance',
@@ -23,7 +23,8 @@ import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../cor
     PercentFormatPipe
   ],
   templateUrl: './model-performance.component.html',
-  styleUrl: './model-performance.component.scss'
+  styleUrl: './model-performance.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ModelPerformanceComponent implements OnInit {
   lastUpdatedTime = signal<string>('Just now');
@@ -53,6 +54,8 @@ export class ModelPerformanceComponent implements OnInit {
       legend: { display: true, labels: { color: '#333' } }
     }
   };
+
+  private cdr = inject(ChangeDetectorRef);
 
   constructor(
     private modelService: ModelService,
@@ -127,12 +130,15 @@ export class ModelPerformanceComponent implements OnInit {
       this.lastUpdatedTime.set(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Error loading performance data:', err);
+    } finally {
+      this.cdr.markForCheck();
     }
   }
 
   async triggerRetrain() {
     this.isRetraining.set(true);
     this.retrainMessage.set('Training pipeline initiated. Ingesting fresh data & reconstructing neural layers (CPU-optimized, may take up to 2 minutes)...');
+    this.cdr.markForCheck();
     try {
       const res = await lastValueFrom(this.modelService.retrainModels());
       if (res && res.status === 'success') {
@@ -145,9 +151,11 @@ export class ModelPerformanceComponent implements OnInit {
       console.error('Error retraining models:', err);
       this.retrainMessage.set('❌ Network error. Retraining request failed.');
     } finally {
+      this.cdr.markForCheck();
       setTimeout(() => {
         this.isRetraining.set(false);
         this.retrainMessage.set('');
+        this.cdr.markForCheck();
       }, 3000);
     }
   }

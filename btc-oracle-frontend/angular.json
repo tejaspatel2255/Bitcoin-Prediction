@@ -15,11 +15,11 @@
       "prefix": "app",
       "architect": {
         "build": {
-          "builder": "@angular-devkit/build-angular:application",
+          "builder": "@angular-devkit/build-angular:browser-esbuild",
           "options": {
             "outputPath": "dist/btc-oracle-frontend",
             "index": "src/index.html",
-            "browser": "src/main.ts",
+            "main": "src/main.ts",
             "polyfills": [
               "zone.js"
             ],
@@ -32,7 +32,15 @@
             "styles": [
               "src/styles.scss"
             ],
-            "scripts": []
+            "scripts": [],
+            "optimization": true,
+            "outputHashing": "all",
+            "sourceMap": false,
+            "namedChunks": false,
+            "aot": true,
+            "buildOptimizer": true,
+            "vendorChunk": true,
+            "commonChunk": true
           },
           "configurations": {
             "production": {
@@ -60,6 +68,14 @@
         },
         "serve": {
           "builder": "@angular-devkit/build-angular:dev-server",
+          "options": {
+            "port": 4200,
+            "hmr": true,
+            "poll": 500,
+            "liveReload": true,
+            "optimization": false,
+            "sourceMap": false
+          },
           "configurations": {
             "production": {
               "buildTarget": "btc-oracle-frontend:build:production"

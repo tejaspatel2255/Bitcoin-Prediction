@@ -1,11 +1,11 @@
-import { Component, OnInit, OnDestroy, signal, effect } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, effect, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TopbarComponent } from '../../shared/components/topbar/topbar.component';
 import { MetricCardComponent } from '../../shared/components/metric-card/metric-card.component';
 import { InsightCardComponent } from '../../shared/components/insight-card/insight-card.component';
 import { ModelCardComponent } from '../../shared/components/model-card/model-card.component';
 import { NgChartsModule } from 'ng2-charts';
-import { ChartConfiguration, ChartType } from 'chart.js';
+import { ChartConfiguration } from 'chart.js';
 import { BitcoinService } from '../../core/services/bitcoin.service';
 import { InsightService } from '../../core/services/insight.service';
 import { ModelService } from '../../core/services/model.service';
@@ -13,7 +13,7 @@ import { PredictionService } from '../../core/services/prediction.service';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { PercentFormatPipe } from '../../shared/pipes/percent-format.pipe';
 import { lastValueFrom, Subscription, interval } from 'rxjs';
-import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../core/chart-config';
+import { DARK_CHART_DEFAULTS, BULL_GREEN } from '../../core/chart-config';
 
 @Component({
   selector: 'app-home',
@@ -29,7 +29,8 @@ import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../cor
     PercentFormatPipe
   ],
   templateUrl: './home.component.html',
-  styleUrl: './home.component.scss'
+  styleUrl: './home.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class HomeComponent implements OnInit, OnDestroy {
   // Signals for state
@@ -88,6 +89,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   };
 
   private refreshSub?: Subscription;
+  private cdr = inject(ChangeDetectorRef);
 
   constructor(
     private bitcoinService: BitcoinService,
@@ -119,6 +121,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   private async fetchInitialData() {
     this.isLoadingMetrics.set(true);
     this.isLoadingInsights.set(true);
+    this.cdr.markForCheck();
 
     try {
       // 1. Fetch live metrics
@@ -157,6 +160,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     } finally {
       this.isLoadingMetrics.set(false);
       this.isLoadingInsights.set(false);
+      this.cdr.markForCheck();
     }
   }
 
@@ -219,6 +223,7 @@ export class HomeComponent implements OnInit, OnDestroy {
           ]
         };
       }
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Error loading home predictions:', err);
     }
@@ -226,6 +231,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async loadChartDataForRange(range: string) {
     this.isLoadingChart.set(true);
+    this.cdr.markForCheck();
     let days = 90;
     if (range === '7D') days = 7;
     if (range === '30D') days = 30;
@@ -239,7 +245,6 @@ export class HomeComponent implements OnInit, OnDestroy {
         const closes = data.map(d => d.close);
         const volumes = data.map(d => d.volume);
         
-        const sma7 = data.map(d => d.sma_7 || null);
         const sma21 = data.map(d => d.sma_21 || null);
         const bbUpper = data.map(d => d.bb_upper || null);
         const bbLower = data.map(d => d.bb_lower || null);
@@ -312,6 +317,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.error('Error loading home chart:', err);
     } finally {
       this.isLoadingChart.set(false);
+      this.cdr.markForCheck();
     }
   }
 
@@ -324,6 +330,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       const priceRes = await lastValueFrom(this.bitcoinService.getLivePrice());
       if (priceRes) this.btcPrice.set(priceRes);
       this.lastUpdatedTime.set(new Date().toLocaleTimeString());
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Error refreshing metrics:', err);
     }
@@ -331,6 +338,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   async refreshInsightSegment(segment: string) {
     this.isLoadingInsights.set(true);
+    this.cdr.markForCheck();
     try {
       const res = await lastValueFrom(this.insightService.refreshInsightSegment(segment));
       if (res && res.response_text) {
@@ -344,6 +352,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       console.error(`Error refreshing insight segment ${segment}:`, err);
     } finally {
       this.isLoadingInsights.set(false);
+      this.cdr.markForCheck();
     }
   }
 }

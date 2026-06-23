@@ -1,12 +1,14 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { SkeletonComponent } from '../skeleton/skeleton.component';
 
 @Component({
   selector: 'app-insight-card',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, SkeletonComponent],
   templateUrl: './insight-card.component.html',
-  styleUrl: './insight-card.component.scss'
+  styleUrl: './insight-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class InsightCardComponent {
   @Input() icon: string = '';
@@ -18,6 +20,12 @@ export class InsightCardComponent {
   @Input() showRefresh: boolean = true;
 
   @Output() refresh = new EventEmitter<void>();
+
+  private cdr = inject(ChangeDetectorRef);
+
+  markForCheck() {
+    this.cdr.markForCheck();
+  }
 
   onRefresh() {
     this.refresh.emit();

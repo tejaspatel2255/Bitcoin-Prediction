@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { TopbarComponent } from '../../shared/components/topbar/topbar.component';
 import { InsightCardComponent } from '../../shared/components/insight-card/insight-card.component';
@@ -14,7 +14,8 @@ import { lastValueFrom } from 'rxjs';
     InsightCardComponent
   ],
   templateUrl: './ai-insights.component.html',
-  styleUrl: './ai-insights.component.scss'
+  styleUrl: './ai-insights.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class AiInsightsComponent implements OnInit {
   lastUpdatedTime = signal<string>('Just now');
@@ -36,6 +37,8 @@ export class AiInsightsComponent implements OnInit {
     outlook: false,
     all: false
   });
+
+  private cdr = inject(ChangeDetectorRef);
 
   constructor(private insightService: InsightService) {}
 
@@ -64,6 +67,7 @@ export class AiInsightsComponent implements OnInit {
       console.error('Error fetching full AI report:', err);
     } finally {
       this.setAllLoading(false);
+      this.cdr.markForCheck();
     }
   }
 
@@ -107,6 +111,7 @@ export class AiInsightsComponent implements OnInit {
       console.error(`Error refreshing segment ${segment}:`, err);
     } finally {
       this.updateLoadingState(loaderKey, false);
+      this.cdr.markForCheck();
     }
   }
 
@@ -118,11 +123,13 @@ export class AiInsightsComponent implements OnInit {
       outlook: val,
       all: val
     });
+    this.cdr.markForCheck();
   }
 
   private updateLoadingState(key: string, val: boolean) {
     const next = { ...this.loadingMap() };
     next[key] = val;
     this.loadingMap.set(next);
+    this.cdr.markForCheck();
   }
 }

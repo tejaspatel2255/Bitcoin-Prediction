@@ -1,4 +1,4 @@
-import { Component, Input, OnInit } from '@angular/core';
+import { Component, Input, OnInit, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { animate, state, style, transition, trigger } from '@angular/animations';
 
@@ -8,6 +8,7 @@ import { animate, state, style, transition, trigger } from '@angular/animations'
   imports: [CommonModule],
   templateUrl: './prediction-card.component.html',
   styleUrl: './prediction-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush,
   animations: [
     trigger('growWidth', [
       state('start', style({ width: '0%' })),
@@ -24,12 +25,19 @@ export class PredictionCardComponent implements OnInit {
   @Input() confidence: number = 0;
 
   animationState = 'start';
+  
+  private cdr = inject(ChangeDetectorRef);
 
   ngOnInit() {
     // Delay slightly to allow element to render before animation starts
     setTimeout(() => {
       this.animationState = 'end';
+      this.cdr.markForCheck();
     }, 200);
+  }
+
+  markForCheck() {
+    this.cdr.markForCheck();
   }
 
   get dirColor(): string {

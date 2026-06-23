@@ -1,4 +1,4 @@
-import { Component, Input } from '@angular/core';
+import { Component, Input, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 
 @Component({
@@ -6,7 +6,8 @@ import { CommonModule } from '@angular/common';
   standalone: true,
   imports: [CommonModule],
   templateUrl: './model-card.component.html',
-  styleUrl: './model-card.component.scss'
+  styleUrl: './model-card.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class ModelCardComponent {
   @Input() icon: string = '';
@@ -14,4 +15,10 @@ export class ModelCardComponent {
   @Input() subtitle: string = '';
   @Input() accuracy: number = 0;
   @Input() accColor: string = '#4CAF50';
+
+  private cdr = inject(ChangeDetectorRef);
+
+  markForCheck() {
+    this.cdr.markForCheck();
+  }
 }

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, signal, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
@@ -8,7 +8,7 @@ import { PredictionService } from '../../core/services/prediction.service';
 import { lastValueFrom } from 'rxjs';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { PercentFormatPipe } from '../../shared/pipes/percent-format.pipe';
-import { BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../core/chart-config';
+import { BTC_ORANGE } from '../../core/chart-config';
 
 @Component({
   selector: 'app-predictions',
@@ -22,7 +22,8 @@ import { BTC_ORANGE, BULL_GREEN, BEAR_RED } from '../../core/chart-config';
     PercentFormatPipe
   ],
   templateUrl: './predictions.component.html',
-  styleUrl: './predictions.component.scss'
+  styleUrl: './predictions.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class PredictionsComponent implements OnInit {
   lastUpdatedTime = signal<string>('Just now');
@@ -47,6 +48,8 @@ export class PredictionsComponent implements OnInit {
       tooltip: { enabled: false }
     }
   };
+
+  private cdr = inject(ChangeDetectorRef);
 
   constructor(private predictionService: PredictionService) {}
 
@@ -117,6 +120,7 @@ export class PredictionsComponent implements OnInit {
       }
 
       this.lastUpdatedTime.set(new Date().toLocaleTimeString());
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Error loading prediction details page:', err);
     }

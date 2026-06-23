@@ -53,3 +53,30 @@ body {
     background: #2A2D3A;
   }
 }
+
+/* GPU acceleration for animated elements */
+.skeleton, .confidence-bar, .live-badge {
+  will-change: transform;
+  transform: translateZ(0);
+}
+
+/* Reduce layout recalculation */
+.metric-card, .insight-card, .prediction-card, .model-card {
+  contain: layout style;
+}
+
+/* Smooth page transitions */
+router-outlet + * {
+  animation: fadeIn 0.2s ease-in;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Optimize font loading */
+* {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeSpeed;
+}

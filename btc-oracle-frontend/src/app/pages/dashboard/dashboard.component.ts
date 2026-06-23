@@ -1,7 +1,7 @@
-import { Component, OnInit, signal, effect } from '@angular/core';
+import { Component, OnInit, signal, effect, ChangeDetectionStrategy, ChangeDetectorRef, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { NgChartsModule } from 'ng2-charts';
-import { ChartConfiguration, ChartType } from 'chart.js';
+import { ChartConfiguration } from 'chart.js';
 import { TopbarComponent } from '../../shared/components/topbar/topbar.component';
 import { PredictionCardComponent } from '../../shared/components/prediction-card/prediction-card.component';
 import { BitcoinService } from '../../core/services/bitcoin.service';
@@ -19,7 +19,8 @@ import { DARK_CHART_DEFAULTS, BTC_ORANGE, BULL_GREEN } from '../../core/chart-co
     PredictionCardComponent
   ],
   templateUrl: './dashboard.component.html',
-  styleUrl: './dashboard.component.scss'
+  styleUrl: './dashboard.component.scss',
+  changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class DashboardComponent implements OnInit {
   selectedRange = signal<string>('90D');
@@ -68,6 +69,8 @@ export class DashboardComponent implements OnInit {
     scales: { x: { display: false }, y: { display: false } }
   };
 
+  private cdr = inject(ChangeDetectorRef);
+
   constructor(
     private bitcoinService: BitcoinService,
     private predictionService: PredictionService
@@ -75,7 +78,7 @@ export class DashboardComponent implements OnInit {
     // Re-fetch historical data when range signal changes
     effect(async () => {
       await this.loadChartDataForRange(this.selectedRange());
-    });
+    }, { allowSignalWrites: true });
   }
 
   async ngOnInit() {
@@ -146,6 +149,7 @@ export class DashboardComponent implements OnInit {
         };
       }
       this.lastUpdatedTime.set(new Date().toLocaleTimeString());
+      this.cdr.markForCheck();
     } catch (err) {
       console.error('Error loading dashboard predictions:', err);
     }
@@ -153,6 +157,7 @@ export class DashboardComponent implements OnInit {
 
   private async loadChartDataForRange(range: string) {
     this.isLoadingChart.set(true);
+    this.cdr.markForCheck();
     let days = 90;
     if (range === '7D') days = 7;
     if (range === '30D') days = 30;
@@ -242,6 +247,7 @@ export class DashboardComponent implements OnInit {
       console.error('Error fetching historical chart data:', err);
     } finally {
       this.isLoadingChart.set(false);
+      this.cdr.markForCheck();
     }
   }
 }
