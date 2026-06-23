@@ -14,4 +14,5 @@ export class MetricCardComponent {
   @Input() value: string = '';
   @Input() delta: string = '';
   @Input() deltaColor: string = '#888888';
+  @Input() topBorderColor: string = '';
 }

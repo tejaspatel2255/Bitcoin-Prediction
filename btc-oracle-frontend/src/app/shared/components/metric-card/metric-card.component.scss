@@ -3,6 +3,11 @@
 
 .metric-card {
   @include card-surface;
+  transition: all 0.2s ease-in-out;
+  
+  &.has-top-border {
+    border-top: 4px solid transparent;
+  }
   
   .metric-label {
     font-size: 11px;

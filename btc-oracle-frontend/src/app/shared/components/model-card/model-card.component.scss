@@ -9,10 +9,11 @@
   gap: 12px;
 
   .icon-box {
-    width: 36px;
-    height: 36px;
-    border-radius: 8px;
-    background: #FFF3E0;
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: #FEF3C7;
+    color: $btc-orange;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -23,19 +24,22 @@
     flex: 1;
 
     .model-name {
-      font-size: 13px;
-      font-weight: 600;
+      font-size: 14px;
+      font-weight: 700;
       color: $text-primary;
     }
 
     .model-subtitle {
       font-size: 11px;
       color: $text-secondary;
+      font-weight: 500;
+      margin-top: 2px;
     }
   }
 
   .model-accuracy {
-    font-size: 18px;
+    font-size: 15px;
     font-weight: 700;
+    color: #10B981;
   }
 }

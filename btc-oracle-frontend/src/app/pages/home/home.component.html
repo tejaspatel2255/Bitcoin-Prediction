@@ -1,28 +1,32 @@
 <app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
 
+<!-- Row 1: Metrics Grid -->
 <div class="metrics-grid">
   <app-metric-card 
     icon="🪙" 
     label="BTC Price" 
     [value]="(btcPrice().price | currencyFormat:2)" 
-    [delta]="(btcPrice().change_24h | percentFormat) + ' (24h)'"
-    [deltaColor]="btcPrice().change_24h >= 0 ? '#4CAF50' : '#F44336'">
+    [delta]="(btcPrice().change_24h | percentFormat) + ' today'"
+    [topBorderColor]="'#F59E0B'"
+    [deltaColor]="btcPrice().change_24h >= 0 ? '#10B981' : '#EF4444'">
   </app-metric-card>
 
   <app-metric-card 
     icon="📊" 
     label="24h Volume" 
     [value]="(btcPrice().volume | currencyFormat:2:true)" 
-    delta="Global trading volume"
-    deltaColor="#888888">
+    delta="+12.1% vs avg"
+    [topBorderColor]="'#10B981'"
+    [deltaColor]="'#10B981'">
   </app-metric-card>
 
   <app-metric-card 
     icon="💼" 
     label="Market Cap" 
     [value]="(btcPrice().market_cap | currencyFormat:2:true)" 
-    delta="Total circulating supply"
-    deltaColor="#888888">
+    delta="Rank #1"
+    [topBorderColor]="'#EF4444'"
+    [deltaColor]="'#10B981'">
   </app-metric-card>
 
   <app-metric-card 
@@ -30,10 +34,112 @@
     label="RSI (14)" 
     [value]="(rsiVal() | number:'1.2-2') || ''" 
     [delta]="rsiVal() >= 70 ? 'Overbought' : (rsiVal() <= 30 ? 'Oversold' : 'Neutral Zone')"
-    [deltaColor]="rsiVal() >= 70 ? '#F44336' : (rsiVal() <= 30 ? '#4CAF50' : '#9C27B0')">
+    [topBorderColor]="'#8B5CF6'"
+    [deltaColor]="rsiVal() >= 70 ? '#EF4444' : (rsiVal() <= 30 ? '#10B981' : '#8B5CF6')">
   </app-metric-card>
 </div>
 
+<!-- Row 2: Price Chart & Predictions Column -->
+<div class="dashboard-middle-row">
+  <!-- Left Side: Price Chart -->
+  <div class="white-card chart-card">
+    <div class="chart-header">
+      <div class="chart-title">
+        <h2>📊 BTC / USD — Price Chart</h2>
+      </div>
+      <div class="range-selector">
+        <button [class.active]="selectedRange() === '7D'" (click)="setRange('7D')">7D</button>
+        <button [class.active]="selectedRange() === '30D'" (click)="setRange('30D')">30D</button>
+        <button [class.active]="selectedRange() === '90D'" (click)="setRange('90D')">90D</button>
+        <button [class.active]="selectedRange() === '1Y'" (click)="setRange('1Y')">1Y</button>
+      </div>
+    </div>
+    
+    <div class="chart-legend">
+      <span><span class="dot orange"></span> Price</span>
+      <span><span class="dot gray"></span> SMA</span>
+      <span><span class="dot purple dashed"></span> BB</span>
+    </div>
+
+    <div class="chart-wrapper">
+      <div *ngIf="isLoadingChart()" class="chart-loading-overlay">
+        <div class="spinner-small"></div>
+        <p>Loading historical chart data...</p>
+      </div>
+      <canvas 
+        *ngIf="!isLoadingChart() && mainChartData.datasets.length > 0"
+        baseChart
+        [data]="mainChartData"
+        [options]="mainChartOptions"
+        [type]="'line'">
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Right Side: Predictions Stack -->
+  <div class="predictions-stack">
+    <!-- Next Day Prediction Card -->
+    <div class="white-card next-day-card">
+      <div class="card-section-title">
+        <span>🛡 NEXT DAY PREDICTION</span>
+      </div>
+      <div class="prediction-main">
+        <h1 class="predicted-value">{{ nextDayPred().predicted | currencyFormat:2 }}</h1>
+        <p class="predicted-range">Range: {{ nextDayPred().low | currencyFormat:0 }} — {{ nextDayPred().high | currencyFormat:0 }}</p>
+      </div>
+      
+      <div class="prediction-badge-row">
+        <span class="direction-badge" [class.bullish]="nextDayPred().direction === 'Bullish'" [class.bearish]="nextDayPred().direction === 'Bearish'">
+          <span class="arrow">{{ nextDayPred().direction === 'Bullish' ? '↗' : '↘' }}</span>
+          {{ nextDayPred().direction }}
+        </span>
+      </div>
+
+      <div class="confidence-bar-section">
+        <div class="confidence-labels">
+          <span class="label">Confidence</span>
+          <span class="value">{{ nextDayPred().confidence | number:'1.0-0' }}%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" [style.width.%]="nextDayPred().confidence"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 7-Day Forecast Card -->
+    <div class="white-card forecast-card">
+      <div class="card-section-title">
+        <span>📅 7-DAY FORECAST</span>
+      </div>
+      
+      <div class="forecast-mini-chart">
+        <canvas 
+          *ngIf="miniChartData.datasets.length > 0"
+          baseChart
+          [data]="miniChartData"
+          [options]="miniChartOptions"
+          [type]="'line'">
+        </canvas>
+        <div class="forecast-axis">
+          <span>Mon</span>
+          <span>Wed</span>
+          <span>Fri</span>
+          <span>Sun</span>
+        </div>
+      </div>
+
+      <div class="forecast-footer">
+        <span class="footer-label">Target</span>
+        <span class="footer-value" [style.color]="forecastStats().changePct >= 0 ? '#10B981' : '#EF4444'">
+          {{ forecastStats().targetPrice | currencyFormat:0 }} 
+          ({{ forecastStats().changePct >= 0 ? '+' : '' }}{{ forecastStats().changePct | number:'1.1-1' }}%)
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Row 3: AI Insights -->
 <div class="section-divider">
   <span>⊕ AI Insights</span>
   <div class="line"></div>
@@ -44,7 +150,7 @@
     icon="🏪" 
     title="Market Summary" 
     [text]="insights().market_summary" 
-    borderColor="#F7931A"
+    borderColor="#F59E0B"
     [isLoading]="isLoadingInsights()"
     (refresh)="refreshInsightSegment('summary')">
   </app-insight-card>
@@ -53,7 +159,7 @@
     icon="⚠️" 
     title="Risk Analysis" 
     [text]="insights().risk_analysis" 
-    borderColor="#F44336"
+    borderColor="#EF4444"
     [isLoading]="isLoadingInsights()"
     (refresh)="refreshInsightSegment('risk')">
   </app-insight-card>
@@ -62,12 +168,13 @@
     icon="📅" 
     title="7-Day Outlook" 
     [text]="insights().seven_day_outlook" 
-    borderColor="#4CAF50"
+    borderColor="#10B981"
     [isLoading]="isLoadingInsights()"
     (refresh)="refreshInsightSegment('outlook')">
   </app-insight-card>
 </div>
 
+<!-- Row 4: Model Status -->
 <div class="section-divider">
   <span>⊕ Model Status</span>
   <div class="line"></div>
@@ -76,25 +183,25 @@
 <div class="models-grid">
   <app-model-card 
     icon="📈" 
-    name="Prophet Forecast" 
-    subtitle="Time-series Trend Decomposition" 
+    name="Prophet" 
+    subtitle="7-day trend" 
     [accuracy]="modelAccuracies().prophet"
-    accColor="#F7931A">
+    accColor="#10B981">
   </app-model-card>
 
   <app-model-card 
     icon="🌲" 
     name="Random Forest" 
-    subtitle="Sequential Lags Classifier" 
+    subtitle="Next-day direction" 
     [accuracy]="modelAccuracies().random_forest"
-    accColor="#4CAF50">
+    accColor="#10B981">
   </app-model-card>
 
   <app-model-card 
     icon="🧠" 
-    name="LSTM Model" 
-    subtitle="Recurrent Neural Network" 
+    name="LSTM" 
+    subtitle="Deep learning" 
     [accuracy]="modelAccuracies().lstm"
-    accColor="#9C27B0">
+    accColor="#10B981">
   </app-model-card>
 </div>
