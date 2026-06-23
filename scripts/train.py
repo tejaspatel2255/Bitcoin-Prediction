@@ -63,6 +63,7 @@ def main():
     logger.info("\n[1/3] Training Prophet Model...")
     try:
         p_model  = prophet_model.train(df)
+        prophet_model.save_model(p_model)
         p_metrics = prophet_model.evaluate(p_model, df)
         logger.info(f"    ✅ Prophet — MAE: ${p_metrics['mae']:,.2f}, RMSE: ${p_metrics['rmse']:,.2f}, MAPE: {p_metrics['mape']:.4f}%")
         results["prophet"] = p_metrics

@@ -1,10 +1,23 @@
 import pandas as pd
+import datetime
 from typing import List, Dict, Any, Optional
 from supabase import create_client, Client
 from app.core.config import settings
 from app.core.logger import get_logger
 
 logger = get_logger("supabase_service")
+
+def serialize_dates(obj: Any) -> Any:
+    """
+    Recursively convert date/datetime objects to ISO string representation to ensure JSON serializability.
+    """
+    if isinstance(obj, dict):
+        return {k: serialize_dates(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [serialize_dates(x) for x in obj]
+    elif isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj.isoformat()
+    return obj
 
 # Initialize the Supabase Client if URL and Key are provided
 supabase: Optional[Client] = None
@@ -161,8 +174,9 @@ def insert_gemini_insight(insight_dict: Dict[str, Any]) -> Dict[str, Any]:
         return {"status": "error", "message": "Supabase client not initialized"}
 
     try:
+        serialized_insight = serialize_dates(insight_dict)
         logger.info("Inserting Gemini insight record into Supabase...")
-        response = supabase.table("gemini_insights").insert(insight_dict).execute()
+        response = supabase.table("gemini_insights").insert(serialized_insight).execute()
         
         logger.info("Gemini insight inserted successfully.")
         return {"status": "success", "data": response.data}
