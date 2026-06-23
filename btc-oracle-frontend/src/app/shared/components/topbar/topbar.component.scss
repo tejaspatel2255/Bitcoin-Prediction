@@ -17,18 +17,10 @@
   align-items: center;
   gap: 12px;
 
-  .btc-icon {
+  .logo-image {
     width: 42px;
     height: 42px;
-    border-radius: 50%;
-    background: $btc-orange;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 22px;
-    font-weight: 700;
-    color: #FFFFFF;
-    box-shadow: 0 2px 4px rgba(245, 158, 11, 0.2);
+    object-fit: contain;
   }
 
   .logo-text {

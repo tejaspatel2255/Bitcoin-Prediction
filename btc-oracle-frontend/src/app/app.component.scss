@@ -27,17 +27,10 @@
     margin-bottom: 30px;
     padding-left: 8px;
 
-    .btc-circle {
+    .sidebar-logo-image {
       width: 32px;
       height: 32px;
-      border-radius: 50%;
-      background: $btc-orange;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      font-weight: 700;
-      color: #FFFFFF;
+      object-fit: contain;
     }
 
     span {
