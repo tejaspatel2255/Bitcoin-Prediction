@@ -1,0 +1,147 @@
+@import '../../../styles/variables';
+@import '../../../styles/cards';
+
+.header-action-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h2 {
+    font-size: 16px;
+    font-weight: 600;
+    color: #FFFFFF;
+  }
+
+  .retrain-btn {
+    background: $btc-orange;
+    border: none;
+    color: #FFFFFF;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 10px rgba(247, 147, 26, 0.2);
+    transition: all 0.2s ease;
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+  }
+}
+
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 24px;
+
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.stat-card {
+  display: flex;
+  flex-direction: column;
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+
+    .avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 700;
+      color: #FFFFFF;
+
+      &.orange { background: $btc-orange; }
+      &.purple { background: $purple; }
+      &.green { background: $green; }
+    }
+
+    h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: $text-primary;
+    }
+  }
+
+  .stats-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .stat-row {
+      display: flex;
+      justify-content: space-between;
+      border-bottom: 1px solid $border;
+      padding-bottom: 8px;
+      font-size: 12px;
+
+      &:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+      }
+
+      .lbl {
+        color: $text-secondary;
+        font-weight: 500;
+      }
+
+      .val {
+        color: $text-primary;
+        font-weight: 700;
+      }
+    }
+  }
+}
+
+.charts-grid-2col {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 20px;
+
+  @media (max-width: 992px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chart-card {
+  display: flex;
+  flex-direction: column;
+  height: 380px;
+
+  h2 {
+    font-size: 14px;
+    font-weight: 600;
+    color: $text-primary;
+    margin-bottom: 16px;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    position: relative;
+    width: 100%;
+    height: 100%;
+
+    canvas {
+      width: 100% !important;
+      height: 100% !important;
+    }
+  }
+}

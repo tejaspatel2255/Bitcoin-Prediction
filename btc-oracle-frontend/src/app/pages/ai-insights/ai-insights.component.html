@@ -1,0 +1,50 @@
+<app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
+
+<div class="insights-grid-2x2">
+  <app-insight-card 
+    icon="🏪" 
+    title="Market Narrative Summary" 
+    [text]="marketSummary()" 
+    borderColor="#F7931A"
+    [timestamp]="'Updated: ' + summaryTimestamp()"
+    [isLoading]="loadingMap()['summary']"
+    (refresh)="refreshInsightSegment('summary')">
+  </app-insight-card>
+
+  <app-insight-card 
+    icon="🔮" 
+    title="Prediction Explanation" 
+    [text]="predictionExplanation()" 
+    borderColor="#9C27B0"
+    [timestamp]="'Updated: ' + explainTimestamp()"
+    [isLoading]="loadingMap()['explain']"
+    (refresh)="refreshInsightSegment('explain')">
+  </app-insight-card>
+
+  <app-insight-card 
+    icon="⚠️" 
+    title="Risk Assessment & Support" 
+    [text]="riskAnalysis()" 
+    borderColor="#F44336"
+    [timestamp]="'Updated: ' + riskTimestamp()"
+    [isLoading]="loadingMap()['risk']"
+    (refresh)="refreshInsightSegment('risk')">
+  </app-insight-card>
+
+  <app-insight-card 
+    icon="📅" 
+    title="7-Day Outlook Forecast" 
+    [text]="sevenDayOutlook()" 
+    borderColor="#4CAF50"
+    [timestamp]="'Updated: ' + outlookTimestamp()"
+    [isLoading]="loadingMap()['outlook']"
+    (refresh)="refreshInsightSegment('outlook')">
+  </app-insight-card>
+</div>
+
+<div class="actions-footer">
+  <button class="primary-btn" (click)="loadAllInsights()" [disabled]="loadingMap()['all']">
+    <span *ngIf="loadingMap()['all']">⚡ Compiling Report...</span>
+    <span *ngIf="!loadingMap()['all']">🔄 Refresh Full Market Report</span>
+  </button>
+</div>

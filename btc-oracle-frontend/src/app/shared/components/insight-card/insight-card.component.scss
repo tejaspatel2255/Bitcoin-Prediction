@@ -1,0 +1,110 @@
+@import '../../../../styles/variables';
+@import '../../../../styles/cards';
+
+.insight-card {
+  @include card-surface;
+  border-left: 4px solid $border;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  justify-content: space-between;
+
+  .card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+
+    .title-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      h3 {
+        font-size: 13px;
+        font-weight: 600;
+        color: $text-primary;
+      }
+
+      .icon {
+        font-size: 16px;
+      }
+    }
+
+    .refresh-btn {
+      background: none;
+      border: none;
+      font-size: 13px;
+      cursor: pointer;
+      opacity: 0.7;
+      transition: opacity 0.2s, transform 0.2s;
+      
+      &:hover {
+        opacity: 1;
+        transform: rotate(45deg);
+      }
+    }
+  }
+
+  .insight-text {
+    font-size: 12px;
+    color: #555555;
+    line-height: 1.7;
+    margin: 0 0 12px;
+    flex-grow: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: auto;
+
+    .provider-badge {
+      font-size: 10px;
+      background: #FFF3E0;
+      color: $btc-orange;
+      border: 1px solid #FFE0B2;
+      padding: 3px 10px;
+      border-radius: 20px;
+    }
+
+    .timestamp {
+      font-size: 10px;
+      color: $text-secondary;
+    }
+  }
+
+  /* Skeleton Loading animations */
+  .skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+  }
+
+  .skeleton-title {
+    height: 18px;
+    width: 60%;
+    margin-bottom: 12px;
+  }
+
+  .skeleton-text {
+    height: 12px;
+    width: 100%;
+    margin-bottom: 8px;
+    
+    &.short {
+      width: 40%;
+    }
+  }
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}

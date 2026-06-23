@@ -1,0 +1,27 @@
+<div class="insight-card" [style.border-left-color]="borderColor">
+  <ng-container *ngIf="isLoading; else contentTpl">
+    <div class="skeleton skeleton-title"></div>
+    <div class="skeleton skeleton-text"></div>
+    <div class="skeleton skeleton-text"></div>
+    <div class="skeleton skeleton-text short"></div>
+  </ng-container>
+
+  <ng-template #contentTpl>
+    <div class="card-header">
+      <div class="title-group">
+        <span class="icon">{{ icon }}</span>
+        <h3>{{ title }}</h3>
+      </div>
+      <button *ngIf="showRefresh" class="refresh-btn" (click)="onRefresh()" title="Refresh Insight">
+        🔄
+      </button>
+    </div>
+    
+    <p class="insight-text">{{ text }}</p>
+    
+    <div class="card-footer">
+      <span class="provider-badge">via OpenRouter · Gemini Flash</span>
+      <span *ngIf="timestamp" class="timestamp">{{ timestamp }}</span>
+    </div>
+  </ng-template>
+</div>

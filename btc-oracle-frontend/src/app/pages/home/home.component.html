@@ -1,0 +1,100 @@
+<app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
+
+<div class="metrics-grid">
+  <app-metric-card 
+    icon="🪙" 
+    label="BTC Price" 
+    [value]="(btcPrice().price | currencyFormat:2)" 
+    [delta]="(btcPrice().change_24h | percentFormat) + ' (24h)'"
+    [deltaColor]="btcPrice().change_24h >= 0 ? '#4CAF50' : '#F44336'">
+  </app-metric-card>
+
+  <app-metric-card 
+    icon="📊" 
+    label="24h Volume" 
+    [value]="(btcPrice().volume | currencyFormat:2:true)" 
+    delta="Global trading volume"
+    deltaColor="#888888">
+  </app-metric-card>
+
+  <app-metric-card 
+    icon="💼" 
+    label="Market Cap" 
+    [value]="(btcPrice().market_cap | currencyFormat:2:true)" 
+    delta="Total circulating supply"
+    deltaColor="#888888">
+  </app-metric-card>
+
+  <app-metric-card 
+    icon="📈" 
+    label="RSI (14)" 
+    [value]="(rsiVal() | number:'1.2-2') || ''" 
+    [delta]="rsiVal() >= 70 ? 'Overbought' : (rsiVal() <= 30 ? 'Oversold' : 'Neutral Zone')"
+    [deltaColor]="rsiVal() >= 70 ? '#F44336' : (rsiVal() <= 30 ? '#4CAF50' : '#9C27B0')">
+  </app-metric-card>
+</div>
+
+<div class="section-divider">
+  <span>⊕ AI Insights</span>
+  <div class="line"></div>
+</div>
+
+<div class="insights-grid">
+  <app-insight-card 
+    icon="🏪" 
+    title="Market Summary" 
+    [text]="insights().market_summary" 
+    borderColor="#F7931A"
+    [isLoading]="isLoadingInsights()"
+    (refresh)="refreshInsightSegment('summary')">
+  </app-insight-card>
+
+  <app-insight-card 
+    icon="⚠️" 
+    title="Risk Analysis" 
+    [text]="insights().risk_analysis" 
+    borderColor="#F44336"
+    [isLoading]="isLoadingInsights()"
+    (refresh)="refreshInsightSegment('risk')">
+  </app-insight-card>
+
+  <app-insight-card 
+    icon="📅" 
+    title="7-Day Outlook" 
+    [text]="insights().seven_day_outlook" 
+    borderColor="#4CAF50"
+    [isLoading]="isLoadingInsights()"
+    (refresh)="refreshInsightSegment('outlook')">
+  </app-insight-card>
+</div>
+
+<div class="section-divider">
+  <span>⊕ Model Status</span>
+  <div class="line"></div>
+</div>
+
+<div class="models-grid">
+  <app-model-card 
+    icon="📈" 
+    name="Prophet Forecast" 
+    subtitle="Time-series Trend Decomposition" 
+    [accuracy]="modelAccuracies().prophet"
+    accColor="#F7931A">
+  </app-model-card>
+
+  <app-model-card 
+    icon="🌲" 
+    name="Random Forest" 
+    subtitle="Sequential Lags Classifier" 
+    [accuracy]="modelAccuracies().random_forest"
+    accColor="#4CAF50">
+  </app-model-card>
+
+  <app-model-card 
+    icon="🧠" 
+    name="LSTM Model" 
+    subtitle="Recurrent Neural Network" 
+    [accuracy]="modelAccuracies().lstm"
+    accColor="#9C27B0">
+  </app-model-card>
+</div>

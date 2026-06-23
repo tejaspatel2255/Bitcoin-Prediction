@@ -1,6 +1,6 @@
 # 🪙 Bitcoin Prediction & AI Insight App
 
-> A full-stack, enterprise-grade Bitcoin price forecasting and market intelligence platform powered by an **ensemble Machine Learning pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **OpenRouter AI (Gemini 1.5 Flash)** for automated market reports, and an interactive **Streamlit** dashboard.
+> A full-stack, enterprise-grade Bitcoin price forecasting and market intelligence platform powered by an **ensemble Machine Learning pipeline** (Prophet + LSTM + Random Forest), **Supabase/PostgreSQL** for persistence, **OpenRouter AI (Gemini 1.5 Flash)** for automated market reports, and a professional **Angular 17** standalone dashboard frontend.
 
 ---
 
@@ -11,55 +11,62 @@
                                  |  yfinance / CoinGecko  |
                                  +-----------+------------+
                                              |
-                                             v  (Data Ingestion)
+                                              v  (Data Ingestion)
                                  +-----------+------------+
                                  |  scripts/seed_data.py  |
                                  +-----------+------------+
                                              |
-                                             v  (Upsert Records)
+                                              v  (Upsert Records)
                                  +-----------+------------+
                                  |  Supabase (PostgreSQL) | <--------------------+
                                  +-----------+------------+                      |
                                              |                                   |
-                         +-------------------+-------------------+               |
-                         |                                       |               |
-                         v  (Historical Data)                    v  (Insight Logs|
-            +------------+------------+            +------------+------------+   |
-            |     scripts/train.py    |            |   gemini_service.py     |   |
-            +------------+------------+            +------------+------------+   |
-                         |                                       ^               |
-                         v  (Saves Model Binary)                 |  (Prompts)    |
-            +------------+------------+                          |               |
-            |   data/saved_models/    |             +------------+------------+  |
-            |   Prophet / LSTM / RF   |             |   OpenRouter API        |  |
-            +------------+------------+             |   (Gemini Flash 1.5)    |  |
-                         |                          +-------------------------+  |
-                         v  (Ensemble Forecast)                                  |
-            +------------+------------+                                          |
-            |  prediction_service.py  +------------------------------------------+
-            +------------+------------+
-                         |
-                         v  (Reads Data / Forecasts)
-            +------------+------------+
-            |  FastAPI Backend (API)  |
-            +------------+------------+
-                         ^
-                         |  (JSON Endpoints)
-            +------------+------------+
-            |    Streamlit Dashboard  |
-            +-------------------------+
+                          +-------------------+-------------------+               |
+                          |                                       |               |
+                          v  (Historical Data)                    v  (Insight Logs|
+             +------------+------------+            +------------+------------+   |
+             |     scripts/train.py    |            |   gemini_service.py     |   |
+             +------------+------------+            +------------+------------+   |
+                          |                                       ^               |
+                          v  (Saves Model Binary)                 |  (Prompts)    |
+             +------------+------------+                          |               |
+             |   data/saved_models/    |             +------------+------------+  |
+             |   Prophet / LSTM / RF   |             |   OpenRouter API        |  |
+             +------------+------------+             |   (Gemini Flash 1.5)    |  |
+                          |                          +-------------------------+  |
+                          v  (Ensemble Forecast)                                  |
+             +------------+------------+                                          |
+             |  prediction_service.py  +------------------------------------------+
+             +------------+------------+
+                          |
+                          v  (Reads Data / Forecasts)
+             +------------+------------+
+             |  FastAPI Backend (API)  |
+             +------------+------------+
+                          ^
+                          |  (JSON API Endpoints / CORS Allowed)
+             +------------+------------+
+             |    Angular 17 Dashboard |
+             +-------------------------+
 ```
 
 ---
 
 ## 🛠️ Tech Stack & Requirements
 
+### Backend:
 *   **Python Version:** `3.11` (strictly required; TensorFlow CPU pins fail on 3.12+).
-*   **Backend framework:** `FastAPI` (REST endpoints, Lifespan loading, background scheduler).
-*   **Frontend dashboard:** `Streamlit` (Interactive multi-page charts, Plotly indicators).
+*   **API Framework:** `FastAPI` (REST endpoints, Lifespan loading, background scheduler).
 *   **Ensemble ML:** `Prophet` (7-day trend), `scikit-learn` (Random Forest, 60% weight), `TensorFlow CPU` (LSTM sequence neural net, 40% weight).
 *   **Database:** `Supabase` PostgreSQL (saves historical data, forecasts, insights, evaluation metrics).
 *   **AI Insight Engine:** `OpenRouter API` (OpenAI-compatible python SDK utilizing `google/gemini-flash-1.5` free tier).
+
+### Frontend (Standalone Single Page Application):
+*   **Framework:** `Angular 17` (Standalone Components architecture).
+*   **State Management:** Angular Signals for reactive UI changes.
+*   **Charts Library:** `Chart.js` & `ng2-charts` for market trends and gauges.
+*   **Styles Layout:** Responsive SCSS Grid (custom theme - white cards on `#0F1117` dark background).
+*   **SEO:** Structured meta descriptions and descriptive titles in root layouts.
 
 ---
 
@@ -78,8 +85,7 @@ python3.11 -m venv venv
 source venv/bin/activate
 ```
 
-### 2. Install Dependencies & Build Tools
-Install required packages and pins:
+### 2. Install Python Dependencies
 ```bash
 pip install --upgrade pip
 pip install -r requirements.txt
@@ -108,6 +114,13 @@ Fill in the credentials:
 SUPABASE_URL="https://your-project-id.supabase.co"
 SUPABASE_KEY="your-anon-public-key"
 OPENROUTER_API_KEY="sk-or-v1-your-key-here"
+PORT=8000
+```
+
+### 6. Install Frontend Dependencies
+```bash
+cd btc-oracle-frontend
+npm install --legacy-peer-deps --no-audit --no-fund
 ```
 
 ---
@@ -125,8 +138,6 @@ OPENROUTER_API_KEY="sk-or-v1-your-key-here"
 
 ## 🚀 How to Run the Full App
 
-Using the provided **Makefile** (on Windows or UNIX shell):
-
 ### Step 1: Seed Historical Data
 Fetches 3 years of daily Bitcoin prices and technical indicators (RSI, MACD, Bollinger Bands) and loads them into Supabase.
 ```bash
@@ -139,13 +150,20 @@ Fits Prophet, LSTM, and Random Forest models on local CPU and saves binary weigh
 make train
 ```
 
-### Step 3: Launch Frontend & Backend Concurrently
-Launches the FastAPI backend and Streamlit dashboard in concurrent windows:
+### Step 3: Launch FastAPI Backend
+Starts the backend on port 8000:
 ```bash
-make run-all
+# In project root
+venv\Scripts\python -m uvicorn main:app --reload --port 8000
 ```
-*   **FastAPI Backend:** Live at `http://127.0.0.1:8000` (docs: `/docs`)
-*   **Streamlit UI Dashboard:** Live at `http://127.0.0.1:8501`
+
+### Step 4: Launch Angular 17 Frontend
+Starts the development web server on port 4200:
+```bash
+# In btc-oracle-frontend/
+npm start
+```
+Open **[http://localhost:4200](http://localhost:4200)** in your browser!
 
 ---
 

@@ -1,0 +1,55 @@
+@import 'variables';
+@import 'typography';
+@import 'cards';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: $bg-dark;
+  overflow-x: hidden;
+}
+
+/* Global scrollbar style (dark, thin) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #1A1D27;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #2A2D3A;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #3A3D4A;
+}
+
+/* Section label helper styles */
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0 12px;
+  
+  span {
+    font-size: 13px;
+    color: #888888;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  .line {
+    flex: 1;
+    height: 1px;
+    background: #2A2D3A;
+  }
+}

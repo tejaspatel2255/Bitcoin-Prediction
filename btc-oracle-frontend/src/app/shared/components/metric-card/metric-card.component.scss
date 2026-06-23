@@ -1,0 +1,29 @@
+@import '../../../../styles/variables';
+@import '../../../../styles/cards';
+
+.metric-card {
+  @include card-surface;
+  
+  .metric-label {
+    font-size: 11px;
+    color: $text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+  }
+
+  .metric-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: $text-primary;
+  }
+
+  .metric-delta {
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+}

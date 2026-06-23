@@ -1,0 +1,112 @@
+<app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
+
+<app-loading-spinner 
+  *ngIf="isRetraining()" 
+  [message]="retrainMessage()" 
+  [overlay]="true">
+</app-loading-spinner>
+
+<div class="header-action-row">
+  <h2>Model Evaluation & Diagnostics</h2>
+  <button class="retrain-btn" (click)="triggerRetrain()" [disabled]="isRetraining()">
+    ⚡ Run Training Pipeline
+  </button>
+</div>
+
+<div class="metrics-grid">
+  <!-- Prophet Stats -->
+  <div class="stat-card white-card">
+    <div class="card-header">
+      <span class="avatar orange">P</span>
+      <h3>Prophet Forecast</h3>
+    </div>
+    <div class="stats-list">
+      <div class="stat-row">
+        <span class="lbl">MAE</span>
+        <span class="val">${{ prophetStats().mae | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">RMSE</span>
+        <span class="val">${{ prophetStats().rmse | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">MAPE</span>
+        <span class="val">{{ prophetStats().mape | number:'1.2-2' }}%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- LSTM Stats -->
+  <div class="stat-card white-card">
+    <div class="card-header">
+      <span class="avatar purple">L</span>
+      <h3>LSTM Neural Network</h3>
+    </div>
+    <div class="stats-list">
+      <div class="stat-row">
+        <span class="lbl">MAE</span>
+        <span class="val">${{ lstmStats().mae | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">RMSE</span>
+        <span class="val">${{ lstmStats().rmse | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">MAPE (Est)</span>
+        <span class="val">2.76%</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Random Forest Stats -->
+  <div class="stat-card white-card">
+    <div class="card-header">
+      <span class="avatar green">R</span>
+      <h3>Random Forest</h3>
+    </div>
+    <div class="stats-list">
+      <div class="stat-row">
+        <span class="lbl">MAE</span>
+        <span class="val">${{ rfStats().mae | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">RMSE</span>
+        <span class="val">${{ rfStats().rmse | number:'1.2-2' }}</span>
+      </div>
+      <div class="stat-row">
+        <span class="lbl">R² Score</span>
+        <span class="val">{{ rfStats().r2 | number:'1.2-2' }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="charts-grid-2col">
+  <!-- Feature Importance Card -->
+  <div class="chart-card white-card">
+    <h2>Feature Importance Weights</h2>
+    <div class="canvas-wrapper">
+      <canvas 
+        *ngIf="featData.datasets.length > 0"
+        baseChart
+        [data]="featData"
+        [options]="featOptions"
+        [type]="'bar'">
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Diagnostic Predictions vs Actual Card -->
+  <div class="chart-card white-card">
+    <h2>Model Prediction Validation vs Actual Price</h2>
+    <div class="canvas-wrapper">
+      <canvas 
+        *ngIf="diagData.datasets.length > 0"
+        baseChart
+        [data]="diagData"
+        [options]="diagOptions"
+        [type]="'line'">
+      </canvas>
+    </div>
+  </div>
+</div>

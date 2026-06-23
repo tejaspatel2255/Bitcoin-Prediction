@@ -1,0 +1,22 @@
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="btc-circle">₿</div>
+      <span>BTC Oracle</span>
+    </div>
+    <nav>
+      <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}">🏠 Home</a>
+      <a routerLink="/dashboard" routerLinkActive="active">📊 Dashboard</a>
+      <a routerLink="/predictions" routerLinkActive="active">🔮 Predictions</a>
+      <a routerLink="/insights" routerLinkActive="active">🧠 AI Insights</a>
+      <a routerLink="/performance" routerLinkActive="active">📈 Performance</a>
+    </nav>
+    <div class="sidebar-footer">
+      <p>Powered by OpenRouter AI</p>
+      <p>Prophet · LSTM · Random Forest</p>
+    </div>
+  </aside>
+  <main class="main-content">
+    <router-outlet></router-outlet>
+  </main>
+</div>

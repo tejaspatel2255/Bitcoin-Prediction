@@ -1,0 +1,14 @@
+@import 'variables';
+
+@mixin card-surface {
+  background: $bg-card;
+  border: 1px solid $border;
+  border-radius: $border-radius;
+  padding: 16px;
+  box-shadow: $shadow;
+  color: $text-primary;
+}
+
+.white-card {
+  @include card-surface;
+}

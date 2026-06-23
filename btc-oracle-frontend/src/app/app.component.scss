@@ -1,0 +1,149 @@
+@import '../styles/variables';
+
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 220px;
+  background: #1A1D27;
+  border-right: 1px solid #2A2D3A;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+  position: fixed;
+  height: 100vh;
+  top: 0;
+  left: 0;
+  z-index: 100;
+  overflow-y: auto;
+
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 30px;
+    padding-left: 8px;
+
+    .btc-circle {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: $btc-orange;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #FFFFFF;
+    }
+
+    span {
+      font-size: 16px;
+      font-weight: 700;
+      color: #FFFFFF;
+      letter-spacing: 0.5px;
+    }
+  }
+
+  nav {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    flex: 1;
+
+    a {
+      display: flex;
+      align-items: center;
+      color: #888888;
+      padding: 12px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      text-decoration: none;
+      transition: all 0.2s ease-in-out;
+      border-left: 3px solid transparent;
+
+      &:hover {
+        background: #2A2D3A;
+        color: #FFFFFF;
+      }
+
+      &.active {
+        background: rgba(247, 147, 26, 0.12);
+        color: $btc-orange;
+        border-left-color: $btc-orange;
+      }
+    }
+  }
+
+  .sidebar-footer {
+    margin-top: auto;
+    padding: 12px 8px 0;
+    border-top: 1px solid #2A2D3A;
+
+    p {
+      font-size: 10px;
+      color: $text-secondary;
+      margin: 4px 0;
+      text-align: center;
+    }
+  }
+}
+
+.main-content {
+  flex: 1;
+  margin-left: 220px;
+  padding: 24px;
+  background-color: $bg-dark;
+  min-height: 100vh;
+  width: calc(100% - 220px);
+}
+
+/* Responsive sidebar layouts */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid #2A2D3A;
+    padding: 16px;
+
+    .sidebar-logo {
+      margin-bottom: 16px;
+    }
+
+    nav {
+      flex-direction: row;
+      flex-wrap: wrap;
+      gap: 6px;
+
+      a {
+        padding: 8px 12px;
+        font-size: 12px;
+        border-left: none;
+        border-bottom: 3px solid transparent;
+
+        &.active {
+          border-bottom-color: $btc-orange;
+        }
+      }
+    }
+
+    .sidebar-footer {
+      display: none;
+    }
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+    padding: 16px;
+  }
+}
