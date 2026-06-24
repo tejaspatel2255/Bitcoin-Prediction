@@ -72,9 +72,7 @@
             "port": 4200,
             "hmr": true,
             "poll": 500,
-            "liveReload": true,
-            "optimization": false,
-            "sourceMap": false
+            "liveReload": true
           },
           "configurations": {
             "production": {

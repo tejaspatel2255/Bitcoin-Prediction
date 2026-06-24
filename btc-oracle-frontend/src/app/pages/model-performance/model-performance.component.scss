@@ -10,7 +10,7 @@
   h2 {
     font-size: 16px;
     font-weight: 600;
-    color: #FFFFFF;
+    color: $text-primary;
   }
 
   .retrain-btn {
@@ -121,27 +121,145 @@
   }
 }
 
+/* Premium Chart Card Styles */
 .chart-card {
+  background: #FFFFFF;
+  border: 1px solid #E8E8E8;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
   display: flex;
   flex-direction: column;
+}
+
+.chart-wrapper {
   height: 380px;
+  position: relative;
+  width: 100%;
 
-  h2 {
-    font-size: 14px;
-    font-weight: 600;
-    color: $text-primary;
-    margin-bottom: 16px;
+  canvas {
+    width: 100% !important;
+    height: 100% !important;
   }
+}
 
-  .canvas-wrapper {
+.chart-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center; /* Vertically centered */
+  margin-bottom: 24px;
+}
+
+.chart-card-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.title-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #F7931A;
+
+  &.blue-dot {
+    background: #60A5FA;
+  }
+}
+
+.chart-card-title h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1A1A;
+  margin: 0;
+}
+
+.chart-card-meta {
+  display: flex;
+  align-items: center; /* Side-by-side centered alignment */
+  gap: 16px;
+}
+
+.date-range-badge {
+  background: #FFF3E0;
+  color: #F7931A;
+  border: 1px solid #FFE0B2;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.chart-stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  padding: 16px 0;
+  border-top: 1px solid #F5F5F5;
+  border-bottom: 1px solid #F5F5F5;
+  margin-bottom: 20px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #999;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1A1A1A;
+}
+
+.stat-value.green { color: #4CAF50; }
+.stat-value.blue { color: #60A5FA; }
+
+.legend-pills {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.pill {
+  font-size: 11px;
+  font-weight: 600;
+}
+.pill.actual { color: #1A1A1A; }
+.pill.rf { color: #F7931A; }
+.pill.lstm { color: #60A5FA; }
+
+/* Skeleton Pulsing Loader */
+@keyframes pulse {
+  0% { opacity: 0.6; }
+  50% { opacity: 1; }
+  100% { opacity: 0.6; }
+}
+
+.chart-card.skeleton {
+  animation: pulse 1.5s infinite ease-in-out;
+  height: 546px; /* Approx height matching the real card */
+
+  .skeleton-header {
+    height: 32px;
+    background: #E5E7EB;
+    width: 60%;
+    margin-bottom: 24px;
+    border-radius: 8px;
+  }
+  .skeleton-stats {
+    height: 58px;
+    background: #E5E7EB;
+    margin-bottom: 24px;
+    border-radius: 8px;
+  }
+  .skeleton-chart {
     flex: 1;
-    position: relative;
-    width: 100%;
-    height: 100%;
-
-    canvas {
-      width: 100% !important;
-      height: 100% !important;
-    }
+    background: #E5E7EB;
+    border-radius: 12px;
+    height: 380px;
   }
 }

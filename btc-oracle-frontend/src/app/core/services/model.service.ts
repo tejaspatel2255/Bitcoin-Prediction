@@ -64,6 +64,20 @@ export class ModelService {
     return this.statusCache$;
   }
 
+  getDiagnosticData(): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/api/models/diagnostic`).pipe(
+      catchError(err => {
+        console.error('Error fetching diagnostic comparison:', err);
+        return of({
+          dates: [],
+          actual: [],
+          predicted_rf: [],
+          predicted_lstm: []
+        });
+      })
+    );
+  }
+
   retrainModels(): Observable<RetrainResult> {
     return this.http.post<RetrainResult>(`${this.apiUrl}/api/models/retrain`, {}).pipe(
       tap(() => this.clearCache()),

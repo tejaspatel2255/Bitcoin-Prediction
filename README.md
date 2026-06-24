@@ -181,3 +181,17 @@ make test
 1.  **CPU-Only Enforcement:** In `app/models/lstm_model.py`, `CUDA_VISIBLE_DEVICES` is set to `"-1"` to prevent execution thread conflicts with local GPU hardware.
 2.  **Robust Error Handling:** All database operations are wrapped in safe exception handling blocks returning standard fallback data when database credentials are not present.
 3.  **LLM Rate Limit Handling:** Insights requests to OpenRouter contain automatic exponential backoff loops (`2s`, `4s`, `8s`) for robust rate-limit handling.
+
+---
+
+## ⚡ Recent Architecture Upgrades
+
+1.  **ESBuild & HMR Optimizations:**
+    *   Switched the Angular build engine to `esbuild` (`@angular-devkit/build-angular:browser-esbuild`), yielding **3-5x faster** compilation times.
+    *   Enabled **Hot Module Replacement (HMR)** and Live Reload in local options to streamline development iterations.
+2.  **Self-Healing Prediction Actuals:**
+    *   Implemented `update_predictions_with_actuals` dynamically: whenever a user requests prediction history, the backend automatically performs a lookup to match pending predictions with finalized daily closing prices in the database, calculating accuracy metrics automatically.
+3.  **High-Fidelity UI/UX & Chart Annotations:**
+    *   Unifed the Feature Importance and Validation chart designs with matching card headers, custom legend pills, and identical heights.
+    *   Included a vertical dashed "Today" line overlay using `chartjs-plugin-annotation` to separate historical performance from future forecasts.
+

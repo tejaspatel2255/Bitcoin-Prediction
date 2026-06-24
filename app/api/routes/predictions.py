@@ -181,6 +181,13 @@ def get_prediction_history(limit: int = Query(default=20, description="Number of
     """
     logger.info(f"API: Fetching last {limit} historical prediction entries from Supabase")
     try:
+        # Dynamically trigger pending actuals update to ensure fresh values are shown
+        try:
+            from app.services.supabase_service import update_predictions_with_actuals
+            update_predictions_with_actuals()
+        except Exception as update_err:
+            logger.warning(f"Self-healing predictions update failed: {update_err}")
+
         preds = get_predictions(limit=limit)
         return preds
     except Exception as e:

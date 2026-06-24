@@ -276,6 +276,9 @@ def scheduled_ingestion_job():
         
         if res.get("status") == "success":
             logger.info(f"Scheduled ingestion successfully upserted {res.get('count', 0)} records.")
+            # Trigger updates for predictions matching newly upserted actual data
+            from app.services.supabase_service import update_predictions_with_actuals
+            update_predictions_with_actuals()
         else:
             logger.error(f"Scheduled ingestion database insert failed: {res.get('message')}")
             

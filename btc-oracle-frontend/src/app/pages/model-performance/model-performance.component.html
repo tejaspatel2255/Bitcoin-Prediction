@@ -7,7 +7,7 @@
 </app-loading-spinner>
 
 <div class="header-action-row">
-  <h2>Model Evaluation & Diagnostics</h2>
+  <h2>Model Performance</h2>
   <button class="retrain-btn" (click)="triggerRetrain()" [disabled]="isRetraining()">
     ⚡ Run Training Pipeline
   </button>
@@ -83,9 +83,14 @@
 
 <div class="charts-grid-2col">
   <!-- Feature Importance Card -->
-  <div class="chart-card white-card">
-    <h2>Feature Importance Weights</h2>
-    <div class="canvas-wrapper">
+  <div class="chart-card">
+    <div class="chart-card-header">
+      <div class="chart-card-title">
+        <div class="title-dot blue-dot"></div>
+        <h3>Feature Importance Weights</h3>
+      </div>
+    </div>
+    <div class="chart-wrapper">
       <canvas 
         *ngIf="featData.datasets.length > 0"
         baseChart
@@ -96,10 +101,48 @@
     </div>
   </div>
 
-  <!-- Diagnostic Predictions vs Actual Card -->
-  <div class="chart-card white-card">
-    <h2>Model Prediction Validation vs Actual Price</h2>
-    <div class="canvas-wrapper">
+  <!-- Skeleton Loader for Diagnostic Chart -->
+  <div class="chart-card skeleton" *ngIf="isLoading()">
+    <div class="skeleton-header"></div>
+    <div class="skeleton-stats"></div>
+    <div class="skeleton-chart"></div>
+  </div>
+
+  <!-- Premium Diagnostic Predictions vs Actual Card -->
+  <div class="chart-card" *ngIf="!isLoading()">
+    <div class="chart-card-header">
+      <div class="chart-card-title">
+        <div class="title-dot"></div>
+        <h3>Actual vs Predicted BTC Price</h3>
+      </div>
+      <div class="chart-card-meta">
+        <span class="date-range-badge">Last 60 Days</span>
+        <div class="legend-pills">
+          <span class="pill actual">● Actual</span>
+          <span class="pill rf">● RF Model</span>
+          <span class="pill lstm">● LSTM</span>
+        </div>
+      </div>
+    </div>
+    <div class="chart-stats-row">
+      <div class="stat">
+        <span class="stat-label">Latest Actual</span>
+        <span class="stat-value">{{ latestActual() | currency:'USD':'symbol':'1.0-0' }}</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">RF Accuracy</span>
+        <span class="stat-value green">{{ rfAccuracy() }}%</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">LSTM Accuracy</span>
+        <span class="stat-value blue">{{ lstmAccuracy() }}%</span>
+      </div>
+      <div class="stat">
+        <span class="stat-label">Data Points</span>
+        <span class="stat-value">60 days</span>
+      </div>
+    </div>
+    <div class="chart-wrapper">
       <canvas 
         *ngIf="diagData.datasets.length > 0"
         baseChart

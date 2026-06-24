@@ -228,3 +228,62 @@ def get_model_metrics(limit: int = 10) -> List[Dict[str, Any]]:
         logger.error(f"Error in get_model_metrics: {e}")
         return []
 
+def update_predictions_with_actuals() -> Dict[str, Any]:
+    """
+    Look for predictions with null actual_value, match them with close prices from btc_historical_data,
+    and update the predictions table with actual close values and calculate error percentages.
+    """
+    if not supabase:
+        logger.error("Supabase client is not initialized.")
+        return {"status": "error", "message": "Supabase client not initialized"}
+
+    try:
+        # Fetch predictions where actual_value is null or not set
+        response = (
+            supabase.table("predictions")
+            .select("id,prediction_date,predicted_value")
+            .is_("actual_value", "null")
+            .execute()
+        )
+        
+        pending_preds = response.data or []
+        if not pending_preds:
+            logger.info("No pending predictions to update with actual values.")
+            return {"status": "success", "updated_count": 0}
+            
+        # Get unique dates we need to look up
+        dates = list(set([str(p["prediction_date"]) for p in pending_preds]))
+        
+        # Fetch actual close prices for these dates
+        hist_resp = (
+            supabase.table("btc_historical_data")
+            .select("date,close")
+            .in_("date", dates)
+            .execute()
+        )
+        
+        hist_data = hist_resp.data or []
+        price_map = {str(h["date"]): float(h["close"]) for h in hist_data}
+        
+        updated_count = 0
+        for p in pending_preds:
+            date_str = str(p["prediction_date"])
+            if date_str in price_map:
+                actual = price_map[date_str]
+                predicted = float(p["predicted_value"])
+                error_pct = round((abs(predicted - actual) / actual) * 100, 2)
+                
+                # Update prediction row in database
+                supabase.table("predictions").update({
+                    "actual_value": actual,
+                    "error_pct": error_pct
+                }).eq("id", p["id"]).execute()
+                updated_count += 1
+                
+        logger.info(f"Updated {updated_count} prediction records with actual price data.")
+        return {"status": "success", "updated_count": updated_count}
+    except Exception as e:
+        logger.error(f"Error in update_predictions_with_actuals: {e}")
+        return {"status": "error", "message": str(e)}
+
+
