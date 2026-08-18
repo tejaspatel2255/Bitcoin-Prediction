@@ -9,27 +9,30 @@
 body {
   margin: 0;
   padding: 0;
-  background-color: $bg-dark;
+  background-color: var(--bg-dark);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Global scrollbar style (dark, thin) */
+/* Global scrollbar style */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #1A1D27;
+  background: var(--bg-dark);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #2A2D3A;
+  background: var(--border-color);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #3A3D4A;
+  background: $btc-orange;
 }
 
 /* Section label helper styles */
@@ -37,20 +40,20 @@ body {
   display: flex;
   align-items: center;
   gap: 10px;
-  margin: 20px 0 12px;
+  margin: 24px 0 14px;
   
   span {
     font-size: 13px;
-    color: #888888;
+    color: var(--text-muted);
     font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.6px;
   }
   
   .line {
     flex: 1;
     height: 1px;
-    background: #2A2D3A;
+    background: var(--border-color);
   }
 }
 
@@ -60,21 +63,16 @@ body {
   transform: translateZ(0);
 }
 
-/* Reduce layout recalculation */
-.metric-card, .insight-card, .prediction-card, .model-card {
-  contain: layout style;
-}
-
 /* Smooth page transitions */
 router-outlet + * {
-  animation: fadeIn 0.2s ease-in;
+  animation: fadeIn 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Optimize font loading */
 * {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

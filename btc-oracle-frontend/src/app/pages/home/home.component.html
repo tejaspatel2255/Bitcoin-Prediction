@@ -1,4 +1,4 @@
-<app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
+<app-topbar [lastUpdated]="lastUpdatedTime()" (exportPdf)="exportExecutivePdf()"></app-topbar>
 
 <!-- Row 1: Metrics Grid -->
 <div class="metrics-grid">
@@ -138,6 +138,13 @@
     </div>
   </div>
 </div>
+
+<!-- Interactive What-If Scenario Simulator -->
+<app-scenario-simulator 
+  [currentPrice]="btcPrice().price" 
+  [baselinePrediction]="nextDayPred().predicted" 
+  [baselineConfidence]="nextDayPred().confidence">
+</app-scenario-simulator>
 
 <!-- Row 3: AI Insights -->
 <div class="section-divider">

@@ -76,6 +76,8 @@ logs/
 node_modules/
 dist/
 .angular/
+btc-oracle-frontend/node_modules/
+btc-oracle-frontend/dist/
+btc-oracle-frontend/.angular/
 btc-oracle-frontend/.editorconfig
 btc-oracle-frontend/.vscode/
-

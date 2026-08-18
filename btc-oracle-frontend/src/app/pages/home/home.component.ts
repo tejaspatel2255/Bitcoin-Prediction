@@ -4,12 +4,14 @@ import { TopbarComponent } from '../../shared/components/topbar/topbar.component
 import { MetricCardComponent } from '../../shared/components/metric-card/metric-card.component';
 import { InsightCardComponent } from '../../shared/components/insight-card/insight-card.component';
 import { ModelCardComponent } from '../../shared/components/model-card/model-card.component';
+import { ScenarioSimulatorComponent } from '../../shared/components/scenario-simulator/scenario-simulator.component';
 import { NgChartsModule } from 'ng2-charts';
 import { ChartConfiguration } from 'chart.js';
 import { BitcoinService } from '../../core/services/bitcoin.service';
 import { InsightService } from '../../core/services/insight.service';
 import { ModelService } from '../../core/services/model.service';
 import { PredictionService } from '../../core/services/prediction.service';
+import { PdfReportService } from '../../core/services/pdf-report.service';
 import { CurrencyFormatPipe } from '../../shared/pipes/currency-format.pipe';
 import { PercentFormatPipe } from '../../shared/pipes/percent-format.pipe';
 import { lastValueFrom, Subscription, interval } from 'rxjs';
@@ -24,6 +26,7 @@ import { DARK_CHART_DEFAULTS, BULL_GREEN } from '../../core/chart-config';
     MetricCardComponent,
     InsightCardComponent,
     ModelCardComponent,
+    ScenarioSimulatorComponent,
     NgChartsModule,
     CurrencyFormatPipe,
     PercentFormatPipe
@@ -65,11 +68,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   mainChartOptions: ChartConfiguration['options'] = {
     ...DARK_CHART_DEFAULTS,
     scales: {
-      x: { grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+      x: { grid: { color: 'rgba(229, 231, 235, 0.1)' }, ticks: { color: '#9CA3AF' } },
       y: { 
         position: 'left',
-        grid: { color: '#E5E7EB' }, 
-        ticks: { color: '#6B7280' } 
+        grid: { color: 'rgba(229, 231, 235, 0.1)' }, 
+        ticks: { color: '#9CA3AF' } 
       },
       yVolume: {
         position: 'right',
@@ -95,9 +98,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     private bitcoinService: BitcoinService,
     private insightService: InsightService,
     private modelService: ModelService,
-    private predictionService: PredictionService
+    private predictionService: PredictionService,
+    private pdfReportService: PdfReportService
   ) {
-    // Re-fetch historical chart data on range change
     effect(async () => {
       await this.loadChartDataForRange(this.selectedRange());
     }, { allowSignalWrites: true });
@@ -106,7 +109,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   async ngOnInit() {
     await this.fetchInitialData();
 
-    // Auto-refresh metrics every 60s
     this.refreshSub = interval(60000).subscribe(() => {
       this.refreshMetrics();
     });
@@ -118,17 +120,24 @@ export class HomeComponent implements OnInit, OnDestroy {
     }
   }
 
+  exportExecutivePdf() {
+    this.pdfReportService.generateExecutiveReport({
+      btcPrice: this.btcPrice(),
+      prediction: this.nextDayPred(),
+      insights: this.insights(),
+      accuracies: this.modelAccuracies()
+    });
+  }
+
   private async fetchInitialData() {
     this.isLoadingMetrics.set(true);
     this.isLoadingInsights.set(true);
     this.cdr.markForCheck();
 
     try {
-      // 1. Fetch live metrics
       const priceRes = await lastValueFrom(this.bitcoinService.getLivePrice());
       if (priceRes) this.btcPrice.set(priceRes);
 
-      // 2. Fetch latest RSI from historical data
       const histData = await lastValueFrom(this.bitcoinService.getHistoricalData(2));
       if (histData && histData.length > 0) {
         const latestRow = histData[histData.length - 1];
@@ -137,11 +146,9 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
       }
 
-      // 3. Fetch latest AI insights
       const report = await lastValueFrom(this.insightService.getFullReport());
       if (report) this.insights.set(report);
 
-      // 4. Fetch Model metrics
       const metrics = await lastValueFrom(this.modelService.getModelMetrics());
       if (metrics && metrics.length > 0) {
         const accMap: any = { prophet: 91.2, random_forest: 93.8, lstm: 94.5 };
@@ -151,9 +158,7 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.modelAccuracies.set(accMap);
       }
 
-      // 5. Fetch Predictions and Forecast
       await this.loadPredictions();
-
       this.lastUpdatedTime.set(new Date().toLocaleTimeString());
     } catch (err) {
       console.error('Error fetching home page data:', err);
@@ -190,7 +195,6 @@ export class HomeComponent implements OnInit, OnDestroy {
           changePct: change
         });
 
-        // Set up the mini trend chart
         const labels = f7d.forecast.map(d => d.date);
         const yhats = f7d.forecast.map(d => d.yhat);
         const uppers = f7d.forecast.map(d => d.yhat_upper);
@@ -254,7 +258,6 @@ export class HomeComponent implements OnInit, OnDestroy {
           this.mainChartOptions.scales['yVolume'].max = maxVol * 4;
         }
 
-        // Setup chart style with elegant gradient under price
         this.mainChartData = {
           labels,
           datasets: [

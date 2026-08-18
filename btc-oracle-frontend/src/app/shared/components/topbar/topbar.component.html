@@ -6,8 +6,20 @@
       <span>AI-Powered Prediction Engine</span>
     </div>
   </div>
+
   <div class="topbar-right">
-    <span class="last-updated">Last updated: {{ lastUpdated }}</span>
+    <!-- PDF Report Export Button -->
+    <button class="topbar-btn pdf-btn" (click)="onExportPdf()" title="Export Executive PDF Brief">
+      <span>📄</span> Export Brief
+    </button>
+
+    <!-- Dark/Light Theme Switcher Button -->
+    <button class="topbar-btn theme-btn" (click)="toggleTheme()" [title]="'Switch to ' + (themeService.currentTheme() === 'dark' ? 'Light' : 'Dark') + ' Mode'">
+      <span>{{ themeService.currentTheme() === 'dark' ? '☀️' : '🌙' }}</span>
+      <span class="theme-label">{{ themeService.currentTheme() === 'dark' ? 'Light' : 'Dark' }}</span>
+    </button>
+
+    <span class="last-updated">Updated: {{ lastUpdated }}</span>
     <span class="live-badge">● Live</span>
   </div>
 </div>
