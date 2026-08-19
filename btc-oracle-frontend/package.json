@@ -2,14 +2,14 @@
   "name": "btc-oracle-frontend",
   "version": "0.0.0",
   "scripts": {
-    "ng": "ng",
-    "start": "ng serve --port 4200 --hmr",
-    "start:fast": "ng serve --port 4200 --hmr --no-poll",
-    "build": "ng build --configuration production",
-    "build:stats": "ng build --stats-json",
+    "ng": "npx ng",
+    "start": "npx ng serve --port 4200 --hmr",
+    "start:fast": "npx ng serve --port 4200 --hmr --no-poll",
+    "build": "npx ng build --configuration production",
+    "build:stats": "npx ng build --stats-json",
     "analyze": "webpack-bundle-analyzer dist/btc-oracle-frontend/stats.json",
-    "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "watch": "npx ng build --watch --configuration development",
+    "test": "npx ng test"
   },
   "private": true,
   "dependencies": {
@@ -25,6 +25,8 @@
     "@angular/router": "^17.3.0",
     "chart.js": "^4.4.0",
     "chartjs-plugin-annotation": "^3.1.0",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.0.0",
     "ng2-charts": "^5.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
