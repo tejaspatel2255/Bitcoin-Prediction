@@ -33,3 +33,13 @@ $green: #10B981;
 $red: #EF4444;
 $purple: #8B5CF6;
 $border-radius: 14px;
+
+// Sass aliases mapped to dynamic CSS custom properties
+$text-primary: var(--text-primary);
+$text-secondary: var(--text-secondary);
+$text-muted: var(--text-muted);
+$bg-dark: var(--bg-dark);
+$bg-card: var(--bg-card);
+$border: var(--border-color);
+$border-color: var(--border-color);
+$shadow: var(--glass-shadow);
