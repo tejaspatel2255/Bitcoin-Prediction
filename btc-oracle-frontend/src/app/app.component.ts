@@ -2,6 +2,7 @@ import { Component, ChangeDetectionStrategy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
 import { LoadingService } from './core/services/loading.service';
+import { ThemeService } from './core/services/theme.service';
 
 @Component({
   selector: 'app-root',
@@ -14,4 +15,5 @@ import { LoadingService } from './core/services/loading.service';
 export class AppComponent {
   title = 'btc-oracle-frontend';
   public loadingService = inject(LoadingService);
+  public themeService = inject(ThemeService);
 }

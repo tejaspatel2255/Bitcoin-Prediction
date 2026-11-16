@@ -47,8 +47,8 @@
   }
 
   .insight-text {
-    font-size: 12px;
-    color: #555555;
+    font-size: 13px;
+    color: var(--text-secondary);
     line-height: 1.7;
     margin: 0 0 12px;
     flex-grow: 1;
@@ -62,11 +62,12 @@
 
     .provider-badge {
       font-size: 10px;
-      background: #FFF3E0;
+      background: rgba(245, 158, 11, 0.12);
       color: $btc-orange;
-      border: 1px solid #FFE0B2;
+      border: 1px solid rgba(245, 158, 11, 0.25);
       padding: 3px 10px;
       border-radius: 20px;
+      font-weight: 600;
     }
 
     .timestamp {

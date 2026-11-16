@@ -19,13 +19,13 @@
     box-shadow: var(--glass-shadow);
 
     &:hover {
-      background: #F0F0F0;
+      background: rgba(255, 255, 255, 0.06);
     }
 
     &.active {
-      background: #1A1D27;
+      background: $btc-orange;
       color: #FFFFFF;
-      border-color: #1A1D27;
+      border-color: $btc-orange;
     }
   }
 }
@@ -61,8 +61,9 @@
 
     .watermark {
       font-size: 11px;
-      color: #FFE0B2;
-      background: rgba(247, 147, 26, 0.1);
+      color: $btc-orange;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
       padding: 3px 8px;
       border-radius: 4px;
       font-weight: 600;
@@ -82,7 +83,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(255, 255, 255, 0.85);
+      background: rgba(11, 14, 20, 0.75);
       display: flex;
       align-items: center;
       justify-content: center;

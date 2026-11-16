@@ -92,10 +92,11 @@
     }
 
     .lbl-model {
-      background: #F4F4F6;
-      padding: 2px 6px;
+      background: var(--input-bg);
+      padding: 3px 8px;
       border-radius: 4px;
-      color: #555;
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
       font-weight: 500;
       text-transform: capitalize;
     }
@@ -103,18 +104,20 @@
     .type-pill {
       font-weight: 600;
       font-size: 10px;
-      padding: 2px 6px;
+      padding: 3px 8px;
       border-radius: 4px;
-      background: #E8E8E8;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
       
-      &.bull { color: $green; background: rgba(76, 175, 80, 0.1); }
-      &.bear { color: $red; background: rgba(244, 67, 54, 0.1); }
+      &.bull { color: $green; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); }
+      &.bear { color: $red; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); }
     }
 
     .pending-lbl {
       color: $btc-orange;
-      background: #FFF3E0;
-      padding: 2px 6px;
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.25);
+      padding: 2px 8px;
       border-radius: 4px;
       font-weight: 600;
       font-size: 10px;
