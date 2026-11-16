@@ -32,7 +32,8 @@ ENV/
 .env
 
 # ── ML Model Files (large binary artifacts — do not commit to git) ───────────
-data/saved_models/
+data/saved_models/*
+!data/saved_models/.gitkeep
 *.pkl
 *.keras
 *.h5
@@ -42,6 +43,7 @@ data/saved_models/
 data/*.csv
 data/*.parquet
 data/*.json
+!data/.gitkeep
 
 # ── Jupyter Notebooks Checkpoints ────────────────────────────────────────────
 .ipynb_checkpoints/
@@ -69,8 +71,14 @@ htmlcov/
 *.log
 logs/
 
-# ── Mypy ──────────────────────────────────────────────────────────────────────
+# ── Mypy & TypeScript Build Cache ───────────────────────────────────────────
 .mypy_cache/
+*.tsbuildinfo
+
+# ── Cloud Hosting CLI Artifacts ───────────────────────────────────────────────
+.vercel/
+.render/
+btc-oracle-frontend/.vercel/
 
 # ── Angular / Frontend ────────────────────────────────────────────────────────
 node_modules/
