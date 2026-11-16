@@ -7,16 +7,16 @@
   margin-bottom: 20px;
 
   .tab-btn {
-    background: $bg-card;
-    border: 1px solid $border;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     border-radius: 8px;
     padding: 8px 16px;
     font-size: 13px;
     font-weight: 600;
-    color: $text-primary;
+    color: var(--text-primary);
     cursor: pointer;
     transition: all 0.2s ease;
-    box-shadow: $shadow;
+    box-shadow: var(--glass-shadow);
 
     &:hover {
       background: #F0F0F0;
@@ -55,7 +55,7 @@
 
     h2 {
       font-size: 16px;
-      color: $text-primary;
+      color: var(--text-primary);
       font-weight: 600;
     }
 
@@ -117,7 +117,7 @@
   
   .card-label {
     font-size: 11px;
-    color: $text-secondary;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 12px;
@@ -132,7 +132,7 @@
   .stats-row {
     display: flex;
     justify-content: space-between;
-    border-top: 1px solid $border;
+    border-top: 1px solid var(--border-color);
     padding-top: 12px;
 
     .stat-item {
@@ -141,7 +141,7 @@
 
       .label {
         font-size: 10px;
-        color: $text-secondary;
+        color: var(--text-secondary);
         text-transform: uppercase;
         margin-bottom: 4px;
       }
@@ -149,7 +149,7 @@
       .value {
         font-size: 16px;
         font-weight: 700;
-        color: $text-primary;
+        color: var(--text-primary);
       }
     }
   }

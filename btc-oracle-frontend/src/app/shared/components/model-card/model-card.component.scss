@@ -26,12 +26,12 @@
     .model-name {
       font-size: 14px;
       font-weight: 700;
-      color: $text-primary;
+      color: var(--text-primary);
     }
 
     .model-subtitle {
       font-size: 11px;
-      color: $text-secondary;
+      color: var(--text-secondary);
       font-weight: 500;
       margin-top: 2px;
     }

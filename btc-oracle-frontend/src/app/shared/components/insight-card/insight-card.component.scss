@@ -3,7 +3,7 @@
 
 .insight-card {
   @include card-surface;
-  border-left: 4px solid $border;
+  border-left: 4px solid var(--border-color);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -23,7 +23,7 @@
       h3 {
         font-size: 13px;
         font-weight: 600;
-        color: $text-primary;
+        color: var(--text-primary);
       }
 
       .icon {

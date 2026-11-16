@@ -11,7 +11,7 @@
   
   .metric-label {
     font-size: 11px;
-    color: $text-secondary;
+    color: var(--text-secondary);
     text-transform: uppercase;
     letter-spacing: 0.5px;
     margin-bottom: 6px;
@@ -23,7 +23,7 @@
   .metric-value {
     font-size: 22px;
     font-weight: 700;
-    color: $text-primary;
+    color: var(--text-primary);
   }
 
   .metric-delta {

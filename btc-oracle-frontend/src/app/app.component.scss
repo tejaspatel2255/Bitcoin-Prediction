@@ -7,8 +7,8 @@
 
 .sidebar {
   width: 220px;
-  background: $bg-card;
-  border-right: 1px solid $border;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   padding: 24px 16px;
@@ -36,7 +36,7 @@
     span {
       font-size: 16px;
       font-weight: 700;
-      color: $text-primary;
+      color: var(--text-primary);
       letter-spacing: 0.5px;
     }
   }
@@ -50,7 +50,7 @@
     a {
       display: flex;
       align-items: center;
-      color: $text-secondary;
+      color: var(--text-secondary);
       padding: 12px 20px;
       border-radius: 8px;
       font-size: 14px;
@@ -61,7 +61,7 @@
 
       &:hover {
         background: #F3F4F6;
-        color: $text-primary;
+        color: var(--text-primary);
       }
 
       &.active {
@@ -76,11 +76,11 @@
   .sidebar-footer {
     margin-top: auto;
     padding: 12px 8px 0;
-    border-top: 1px solid $border;
+    border-top: 1px solid var(--border-color);
 
     p {
       font-size: 10px;
-      color: $text-secondary;
+      color: var(--text-secondary);
       margin: 4px 0;
       text-align: center;
     }
@@ -91,7 +91,7 @@
   flex: 1;
   margin-left: 220px;
   padding: 24px;
-  background-color: $bg-dark;
+  background-color: var(--bg-dark);
   min-height: 100vh;
   width: calc(100% - 220px);
 }
