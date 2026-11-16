@@ -1,0 +1,72 @@
+<app-topbar [lastUpdated]="lastUpdatedTime()"></app-topbar>
+
+<div class="tabs-container">
+  <button 
+    *ngFor="let range of ['7D', '30D', '90D', '1Y']" 
+    class="tab-btn" 
+    [class.active]="selectedRange() === range" 
+    (click)="setRange(range)">
+    {{ range }}
+  </button>
+</div>
+
+<div class="dashboard-grid">
+  <!-- Left Side: Main Chart Canvas (65% width) -->
+  <div class="chart-container white-card">
+    <div class="chart-header">
+      <h2>BTC Market Trend & Indicators</h2>
+      <span class="watermark">BTC ORACLE</span>
+    </div>
+    
+    <div class="canvas-wrapper">
+      <div class="loading-overlay" *ngIf="isLoadingChart()">
+        <div class="spinner"></div>
+      </div>
+      <canvas 
+        *ngIf="!isLoadingChart() && mainChartData.datasets.length > 0"
+        baseChart
+        [data]="mainChartData"
+        [options]="mainChartOptions"
+        [type]="'line'">
+      </canvas>
+    </div>
+  </div>
+
+  <!-- Right Side: Predictions & Forecast Mini Chart (35% width) -->
+  <div class="sidebar-container">
+    <app-prediction-card 
+      [predicted]="nextDayPred().predicted"
+      [low]="nextDayPred().low"
+      [high]="nextDayPred().high"
+      [direction]="nextDayPred().direction"
+      [confidence]="nextDayPred().confidence">
+    </app-prediction-card>
+
+    <div class="forecast-mini-card white-card">
+      <div class="card-label">📅 7-Day Forecast Trend</div>
+      
+      <div class="mini-canvas-wrapper">
+        <canvas 
+          *ngIf="miniChartData.datasets.length > 0"
+          baseChart
+          [data]="miniChartData"
+          [options]="miniChartOptions"
+          [type]="'line'">
+        </canvas>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-item">
+          <span class="label">Target Price</span>
+          <span class="value">${{ forecastStats().targetPrice | number:'1.0-0' }}</span>
+        </div>
+        <div class="stat-item">
+          <span class="label">Projected Change</span>
+          <span class="value" [style.color]="forecastStats().changePct >= 0 ? '#4CAF50' : '#F44336'">
+            {{ forecastStats().changePct > 0 ? '+' : '' }}{{ forecastStats().changePct | number:'1.2-2' }}%
+          </span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,27 @@
+<div class="prediction-card">
+  <div class="card-label">🔮 Next Day Prediction</div>
+  <div class="predicted-value">${{ predicted | number:'1.0-0' }}</div>
+  <div class="range-value">
+    Range: ${{ low | number:'1.0-0' }} — ${{ high | number:'1.0-0' }}
+  </div>
+  
+  <div class="badge-wrapper">
+    <span class="dir-badge" [style.background]="dirBg" [style.color]="dirColor" [style.border-color]="dirColor + '33'">
+      {{ arrow }} {{ direction }}
+    </span>
+  </div>
+  
+  <div class="confidence-section">
+    <div class="confidence-labels">
+      <span>Confidence</span>
+      <span>{{ confidence }}%</span>
+    </div>
+    <div class="progress-track">
+      <div 
+        class="progress-bar" 
+        [style.background-color]="dirColor"
+        [@growWidth]="{ value: animationState, params: { width: confidence } }">
+      </div>
+    </div>
+  </div>
+</div>

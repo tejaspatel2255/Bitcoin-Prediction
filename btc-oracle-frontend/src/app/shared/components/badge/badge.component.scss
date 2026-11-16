@@ -1,0 +1,32 @@
+@import '../../../../styles/variables';
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid transparent;
+
+  &.badge-bullish, &.badge-up {
+    background: rgba(76, 175, 80, 0.12);
+    color: $green;
+    border-color: rgba(76, 175, 80, 0.2);
+  }
+
+  &.badge-bearish, &.badge-down {
+    background: rgba(244, 67, 54, 0.12);
+    color: $red;
+    border-color: rgba(244, 67, 54, 0.2);
+  }
+
+  &.badge-neutral {
+    background: rgba(156, 39, 176, 0.12);
+    color: $purple;
+    border-color: rgba(156, 39, 176, 0.2);
+  }
+}

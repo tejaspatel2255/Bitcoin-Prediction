@@ -1,0 +1,128 @@
+<div class="white-card scenario-card">
+  <div class="scenario-header">
+    <div class="header-title">
+      <span class="icon">🧪</span>
+      <div>
+        <h3>Interactive "What-If" Scenario Simulator</h3>
+        <p>Adjust market variables to simulate real-time ensemble model response</p>
+      </div>
+    </div>
+
+    <!-- Quick Preset Actions -->
+    <div class="presets-row">
+      <button class="preset-btn bull" (click)="applyPreset('bull')">🚀 Bull Surge</button>
+      <button class="preset-btn bear" (click)="applyPreset('bear')">🐻 Bear Selloff</button>
+      <button class="preset-btn vol" (click)="applyPreset('volatility')">⚡ High Volatility</button>
+      <button class="preset-btn reset" (click)="applyPreset('reset')">🔄 Reset</button>
+    </div>
+  </div>
+
+  <div class="scenario-body">
+    <!-- Left Column: Controls Sliders -->
+    <div class="sliders-column">
+      <!-- Slider 1: Volume Surge -->
+      <div class="control-group">
+        <div class="label-row">
+          <span class="control-title">📊 24h Volume Impact</span>
+          <span class="control-value" [class.positive]="volumeChange() > 0" [class.negative]="volumeChange() < 0">
+            {{ volumeChange() > 0 ? '+' : '' }}{{ volumeChange() }}%
+          </span>
+        </div>
+        <input 
+          type="range" 
+          min="-50" 
+          max="50" 
+          step="5" 
+          [ngModel]="volumeChange()" 
+          (ngModelChange)="volumeChange.set($event)" 
+          class="slider volume-slider" />
+        <div class="slider-ticks">
+          <span>-50% (Drying Up)</span>
+          <span>0% Baseline</span>
+          <span>+50% (Huge Surge)</span>
+        </div>
+      </div>
+
+      <!-- Slider 2: Sentiment / RSI Shift -->
+      <div class="control-group">
+        <div class="label-row">
+          <span class="control-title">📈 Sentiment / RSI Indicator</span>
+          <span class="control-value" [class.overbought]="sentimentRsi() >= 70" [class.oversold]="sentimentRsi() <= 30">
+            {{ sentimentRsi() }} — {{ sentimentRsi() >= 70 ? 'Overbought' : (sentimentRsi() <= 30 ? 'Oversold' : 'Neutral') }}
+          </span>
+        </div>
+        <input 
+          type="range" 
+          min="20" 
+          max="80" 
+          step="2" 
+          [ngModel]="sentimentRsi()" 
+          (ngModelChange)="sentimentRsi.set($event)" 
+          class="slider rsi-slider" />
+        <div class="slider-ticks">
+          <span>20 (Fear)</span>
+          <span>50 (Neutral)</span>
+          <span>80 (Greed)</span>
+        </div>
+      </div>
+
+      <!-- Slider 3: Macro Volatility -->
+      <div class="control-group">
+        <div class="label-row">
+          <span class="control-title">⚡ Volatility Factor</span>
+          <span class="control-value">{{ volatilityFactor() | number:'1.1-1' }}x</span>
+        </div>
+        <input 
+          type="range" 
+          min="0.5" 
+          max="2.0" 
+          step="0.1" 
+          [ngModel]="volatilityFactor()" 
+          (ngModelChange)="volatilityFactor.set($event)" 
+          class="slider vol-slider" />
+        <div class="slider-ticks">
+          <span>0.5x Low</span>
+          <span>1.0x Normal</span>
+          <span>2.0x High</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Column: Simulated Forecast Output -->
+    <div class="output-column">
+      <div class="output-card shadow-card">
+        <span class="output-badge">RECALCULATED FORECAST</span>
+        
+        <div class="simulated-price-display">
+          <h2>{{ simulatedResult().simulatedPrice | currencyFormat:2 }}</h2>
+          <span class="delta-tag" [class.positive]="simulatedResult().deltaFromCurrent >= 0" [class.negative]="simulatedResult().deltaFromCurrent < 0">
+            {{ simulatedResult().deltaFromCurrent >= 0 ? '▲ +' : '▼ ' }}
+            {{ simulatedResult().deltaFromCurrent | currencyFormat:0 }} 
+            ({{ simulatedResult().deltaPct >= 0 ? '+' : '' }}{{ simulatedResult().deltaPct | number:'1.2-2' }}%)
+          </span>
+        </div>
+
+        <div class="range-box">
+          <div class="range-info">
+            <span class="range-label">Simulated Range</span>
+            <span class="range-val">{{ simulatedResult().rangeLow | currencyFormat:0 }} — {{ simulatedResult().rangeHigh | currencyFormat:0 }}</span>
+          </div>
+        </div>
+
+        <div class="sim-footer">
+          <div class="footer-item">
+            <span class="lbl">Direction Bias</span>
+            <span class="val" [class.bull]="simulatedResult().direction === 'Bullish'" [class.bear]="simulatedResult().direction === 'Bearish'">
+              {{ simulatedResult().direction === 'Bullish' ? '↗ Bullish' : '↘ Bearish' }}
+            </span>
+          </div>
+
+          <div class="footer-item">
+            <span class="lbl">Model Confidence</span>
+            <span class="val conf">{{ simulatedResult().confidence | number:'1.0-0' }}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
